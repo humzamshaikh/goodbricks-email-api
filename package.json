@@ -1,0 +1,70 @@
+{
+  "name": "gb2-module-api-template",
+  "version": "1.0.0",
+  "description": "Starter template for AWS Lambda (Node.js 22)",
+  "main": "src/lambdas/get-hello-world/index.js",
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node --loader ts-node/esm scripts/invoke-local.ts src/lambdas/get-hello-world/index.ts src/lambdas/get-hello-world/requests/request.json",
+    "local:ts": "node --loader ts-node/esm scripts/invoke-local.ts",
+    "local:get-hello:ts": "node --loader ts-node/esm scripts/invoke-local.ts src/lambdas/get-hello-world/index.ts src/lambdas/get-hello-world/requests/request.json",
+    "local:sample:ts": "node --loader ts-node/esm scripts/invoke-local.ts src/lambdas/sample-lambda/index.ts src/lambdas/sample-lambda/requests/request.json",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
+    "lint": "eslint . --ext .ts",
+    "format": "prettier --write .",
+    "add:test": "node --loader ts-node/esm scripts/add-test.ts",
+    "update:lambda": "node --loader ts-node/esm scripts/update-lambda-structure.ts",
+    "comments": "echo TypeScript mode is the recommended way to run lambdas locally. Use :ts scripts or: npm run local:ts -- <src-handler> <event.json>",
+    "deploy-get-getaudiencegroupapi": "lambda-build upload v1-get-getaudiencegroupapi -r us-west-1 -e src/lambdas/get-getaudiencegroupapi/index.ts",
+    "deploy-get-getaudienceapi": "lambda-build upload v1-get-getaudienceapi -r us-west-1 -e src/lambdas/get-getaudienceapi/index.ts",
+    "deploy-get-getcampaigndetailsapi": "lambda-build upload v1-get-getcampaigndetailsapi -r us-west-1 -e src/lambdas/get-getcampaigndetailsapi/index.ts",
+    "deploy-get-getemailtemplatesapi": "lambda-build upload v1-get-getemailtemplatesapi -r us-west-1 -e src/lambdas/get-getemailtemplatesapi/index.ts",
+    "deploy-post-createcampaignapi": "lambda-build upload v1-post-createcampaignapi -r us-west-1 -e src/lambdas/post-createcampaignapi/index.ts",
+    "deploy-post-importaudienceapi": "lambda-build upload v1-post-importaudienceapi -r us-west-1 -e src/lambdas/post-importaudienceapi/index.ts",
+    "deploy-post-createaudiencegroupapi": "lambda-build upload v1-post-createaudiencegroupapi -r us-west-1 -e src/lambdas/post-createaudiencegroupapi/index.ts",
+    "deploy-post-sendemailapi": "lambda-build upload v1-post-sendemailapi -r us-west-1 -e src/lambdas/post-sendemailapi/index.ts",
+    "deploy-post-mastersendcampaignapi": "lambda-build upload v1-post-mastersendcampaignapi -r us-west-1 -e src/lambdas/post-mastersendcampaignapi/index.ts",
+    "deploy-post-personalizedsendcampaignapi": "lambda-build upload v1-post-personalizedsendcampaignapi -r us-west-1 -e src/lambdas/post-personalizedsendcampaignapi/index.ts",
+    "deploy-post-sendtransactionalemailapisuccess": "lambda-build upload v1-post-sendtransactionalemailapisuccess -r us-west-1 -e src/lambdas/post-sendtransactionalemailapisuccess/index.ts",
+    "deploy-put-updateaudienceapi": "lambda-build upload v1-put-updateaudienceapi -r us-west-1 -e src/lambdas/put-updateaudienceapi/index.ts",
+    "deploy-put-updatecampaignapi": "lambda-build upload v1-put-updatecampaignapi -r us-west-1 -e src/lambdas/put-updatecampaignapi/index.ts",
+    "deploy-put-addaudiencetogroupapi": "lambda-build upload v1-put-addaudiencetogroupapi -r us-west-1 -e src/lambdas/put-addaudiencetogroupapi/index.ts",
+    "deploy-delete-deleteaudiencememberapi": "lambda-build upload v1-delete-deleteaudiencememberapi -r us-west-1 -e src/lambdas/delete-deleteaudiencememberapi/index.ts"
+  },
+  "keywords": [
+    "aws",
+    "lambda",
+    "nodejs",
+    "template"
+  ],
+  "author": "",
+  "license": "ISC",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "lambda-build": "^1.0.6",
+    "@aws-sdk/client-dynamodb": "^3.0.0",
+    "@aws-sdk/lib-dynamodb": "^3.0.0",
+    "@aws-sdk/client-s3": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.11",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-prettier": "^5.2.1",
+    "jest": "^29.7.0",
+    "prettier": "^3.3.3",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
+  }
+}

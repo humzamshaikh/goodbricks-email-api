@@ -1,0 +1,9 @@
+{
+  "requestContext": {
+    "http": {
+      "method": "GET",
+      "path": "/hello"
+    }
+  },
+  "queryStringParameters": { "name": "World" }
+}
