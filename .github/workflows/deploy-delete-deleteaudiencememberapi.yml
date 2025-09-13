@@ -1,0 +1,27 @@
+name: Deploy delete-deleteaudiencememberapi
+
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'src/lambdas/delete-deleteaudiencememberapi/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
+          aws-region: us-west-2
+      - run: npm ci
+      - name: Deploy delete-deleteaudiencememberapi
+        run: npm run deploy-delete-deleteaudiencememberapi
