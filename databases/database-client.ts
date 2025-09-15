@@ -8,7 +8,7 @@ import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 
 // DynamoDB Configuration
 const dynamoClient = new DynamoDBClient({
-  region: process.env.AWS_REGION || 'us-west-2'
+  region: process.env.AWS_REGION || 'us-west-1'
 });
 
 export const docClient = DynamoDBDocumentClient.from(dynamoClient);
@@ -21,5 +21,5 @@ export const TABLE_NAMES = {
 } as const;
 
 // Export for easy importing in lambda functions
-export { docClient as dynamoClient, TABLE_NAMES };
+export { docClient as dynamoClient };
 export default docClient;

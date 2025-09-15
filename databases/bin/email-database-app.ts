@@ -6,7 +6,7 @@ const app = new cdk.App();
 new GoodBricksEmailDatabaseStack(app, 'EmailTemplatesDatabaseStack', {
   env: {
     account: '900546257868',
-    region: 'us-west-2'
+    region: 'us-west-1'
   },
   description: 'DynamoDB tables for GoodBricks Email API - Email Templates and Email History'
 });

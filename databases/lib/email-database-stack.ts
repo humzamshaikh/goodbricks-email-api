@@ -221,7 +221,7 @@ export class GoodBricksEmailDatabaseStack extends cdk.Stack {
 
     // S3: Buckets for templates and branded templates
     const templatesBucket = new s3.Bucket(this, 'EmailTemplatesBucket', {
-      bucketName: `gb-email-templates-${cdk.Aws.ACCOUNT_ID}-${cdk.Aws.REGION}`,
+      bucketName: `gb-email-templates-${cdk.Aws.ACCOUNT_ID}-us-west-1`,
       versioned: true,
       encryption: s3.BucketEncryption.S3_MANAGED,
       enforceSSL: true,
@@ -231,7 +231,7 @@ export class GoodBricksEmailDatabaseStack extends cdk.Stack {
     });
 
     const brandedTemplatesBucket = new s3.Bucket(this, 'BrandedEmailTemplatesBucket', {
-      bucketName: `gb-branded-templates-${cdk.Aws.ACCOUNT_ID}-${cdk.Aws.REGION}`,
+      bucketName: `gb-branded-templates-${cdk.Aws.ACCOUNT_ID}-us-west-1`,
       versioned: true,
       encryption: s3.BucketEncryption.S3_MANAGED,
       enforceSSL: true,

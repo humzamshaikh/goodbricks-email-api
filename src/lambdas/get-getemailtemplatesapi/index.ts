@@ -5,17 +5,17 @@ import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 
 // AWS Clients
 const dynamoClient = new DynamoDBClient({
-  region: process.env.AWS_REGION || 'us-west-2'
+  region: process.env.AWS_REGION || 'us-west-1'
 });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 const s3Client = new S3Client({
-  region: process.env.AWS_REGION || 'us-west-2'
+  region: process.env.AWS_REGION || 'us-west-1'
 });
 
 // Table and bucket names
 const EMAIL_TEMPLATES_TABLE = process.env.EMAIL_TEMPLATES_TABLE_NAME || 'email-templates';
-const TEMPLATES_BUCKET = process.env.TEMPLATES_BUCKET_NAME || 'gb-email-templates-900546257868-us-west-2';
-const BRANDED_TEMPLATES_BUCKET = process.env.BRANDED_TEMPLATES_BUCKET_NAME || 'gb-branded-templates-900546257868-us-west-2';
+const TEMPLATES_BUCKET = process.env.TEMPLATES_BUCKET_NAME || 'gb-email-templates-900546257868-us-west-1';
+const BRANDED_TEMPLATES_BUCKET = process.env.BRANDED_TEMPLATES_BUCKET_NAME || 'gb-branded-templates-900546257868-us-west-1';
 
 // Types
 interface EmailTemplate {
@@ -23,6 +23,7 @@ interface EmailTemplate {
   version: number;
   name: string;
   category: string;
+  
   subject: string;
   description: string;
   isActive: string;

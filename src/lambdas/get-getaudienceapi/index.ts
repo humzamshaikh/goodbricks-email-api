@@ -4,7 +4,7 @@ import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
 
 // AWS Clients
 const dynamoClient = new DynamoDBClient({
-  region: process.env.AWS_REGION || 'us-west-2'
+  region: process.env.AWS_REGION || 'us-west-1'
 });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 

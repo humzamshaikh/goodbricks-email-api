@@ -10,7 +10,7 @@ import {
   mockAudience
 } from './mock-data.js';
 
-const region = process.env.AWS_REGION || 'us-west-2';
+const region = process.env.AWS_REGION || 'us-west-1';
 const accountId = process.env.AWS_ACCOUNT_ID || '900546257868';
 
 async function main() {

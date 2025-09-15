@@ -5,11 +5,11 @@
   "main": "database-client.js",
   "scripts": {
     "build": "tsc",
-    "deploy": "npm run build && npx cdk deploy --require-approval never --region us-west-2",
-    "synth": "npm run build && npx cdk synth --region us-west-2",
-    "bootstrap": "npx cdk bootstrap --region us-west-2",
+    "deploy": "npm run build && npx cdk deploy --require-approval never --region us-west-1",
+    "synth": "npm run build && npx cdk synth --region us-west-1",
+    "bootstrap": "npx cdk bootstrap --region us-west-1",
     "seed": "npm run build && node dist/seed.js",
-    "seed:dev": "npm run build && AWS_REGION=us-west-2 node dist/seed.js",
+    "seed:dev": "npm run build && AWS_REGION=us-west-1 node dist/seed.js",
     "clean": "rm -rf dist cdk.out",
     "test": "jest"
   },
