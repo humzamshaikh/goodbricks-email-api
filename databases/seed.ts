@@ -7,7 +7,8 @@ import {
   mockEmailAnalytics, 
   mockS3Templates, 
   mockBrandedTemplates,
-  mockAudience
+  mockAudience,
+  mockEmailCampaigns
 } from './mock-data.js';
 
 const region = process.env.AWS_REGION || 'us-west-1';
@@ -83,11 +84,21 @@ async function main() {
     }));
   }
 
+  // Seed Email Campaigns Table
+  console.log('📣 Seeding email campaigns...');
+  for (const campaign of mockEmailCampaigns) {
+    await ddb.send(new PutCommand({
+      TableName: 'email-campaigns',
+      Item: campaign
+    }));
+  }
+
   console.log('✅ Database seeding complete!');
   console.log(`📊 Seeded ${mockEmailTemplates.length} email templates`);
   console.log(`📧 Seeded ${mockEmailHistory.length} email history records`);
   console.log(`📈 Seeded ${mockEmailAnalytics.length} analytics records`);
   console.log(`👥 Seeded ${mockAudience.length} audience members`);
+  console.log(`📣 Seeded ${mockEmailCampaigns.length} email campaigns`);
   console.log(`📁 Uploaded ${mockS3Templates.length} S3 templates`);
   console.log(`🎨 Uploaded ${mockBrandedTemplates.length} branded templates`);
 }

@@ -354,3 +354,74 @@ export const mockAudience = [
     lastModified: '2024-01-27T16:10:00Z'
   }
 ];
+
+// Mock Email Campaigns
+export const mockEmailCampaigns = [
+  {
+    userId: 'cognito-user-123',
+    campaignId: 'cmp-123',
+    name: 'January Welcome Blast',
+    description: 'Welcome sequence kickoff for January signups',
+    templateId: 'welcome',
+    templateVersion: 2,
+    audienceSelection: {
+      type: 'tag',
+      values: ['subscribed']
+    },
+    status: 'draft',
+    // scheduledAt omitted when not scheduled
+    // sentAt omitted when not sent
+    lastModified: '2024-01-28T12:00:00Z',
+    createdAt: '2024-01-28T11:50:00Z',
+    metadata: {
+      subject: 'Welcome to GoodBricks!',
+      fromName: 'GoodBricks Team',
+      fromEmail: 'noreply@goodbricks.com',
+      previewText: 'Getting started tips inside'
+    }
+  },
+  {
+    userId: 'cognito-user-123',
+    campaignId: 'cmp-456',
+    name: 'Weekly Newsletter #42',
+    description: 'Product updates and community news',
+    templateId: 'newsletter',
+    templateVersion: 1,
+    audienceSelection: {
+      type: 'all',
+      values: []
+    },
+    status: 'scheduled',
+    scheduledAt: '2024-02-01T17:00:00Z',
+    sentAt: null,
+    lastModified: '2024-01-30T09:30:00Z',
+    createdAt: '2024-01-30T09:20:00Z',
+    metadata: {
+      subject: 'This Week at GoodBricks',
+      fromName: 'GoodBricks Updates',
+      fromEmail: 'updates@goodbricks.com'
+    }
+  },
+  {
+    userId: 'cognito-user-456',
+    campaignId: 'cmp-789',
+    name: 'Promo: Premium Upgrade',
+    description: 'Limited-time premium upgrade offer',
+    templateId: 'promotional',
+    templateVersion: 1,
+    audienceSelection: {
+      type: 'tag',
+      values: ['premium']
+    },
+    status: 'sent',
+    scheduledAt: '2024-01-18T15:00:00Z',
+    sentAt: '2024-01-18T15:10:00Z',
+    lastModified: '2024-01-18T15:10:00Z',
+    createdAt: '2024-01-18T14:50:00Z',
+    metadata: {
+      subject: 'Special Offer Inside!',
+      fromName: 'GoodBricks Deals',
+      fromEmail: 'deals@goodbricks.com'
+    }
+  }
+];
