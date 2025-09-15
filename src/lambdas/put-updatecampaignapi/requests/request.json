@@ -1,0 +1,7 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-123",
+    "campaignId": "cmp-123"
+  },
+  "body": "{\"name\": \"Updated January Welcome Blast\", \"description\": \"Updated description for the welcome campaign\", \"status\": \"scheduled\", \"scheduledAt\": \"2024-02-15T10:00:00Z\", \"metadata\": {\"subject\": \"Updated Welcome to GoodBricks!\", \"previewText\": \"Updated preview text\"}}"
+}
