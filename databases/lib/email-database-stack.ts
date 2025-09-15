@@ -188,6 +188,39 @@ export class GoodBricksEmailDatabaseStack extends cdk.Stack {
       }
     });
 
+    // Campaigns Table
+    const campaignsTable = new dynamodb.Table(this, 'EmailCampaignsTable', {
+      tableName: 'email-campaigns',
+      partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'campaignId', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      pointInTimeRecovery: true,
+      removalPolicy: cdk.RemovalPolicy.RETAIN
+    });
+
+    cdk.Tags.of(campaignsTable).add('Project', 'GoodBricks-Email-API');
+    cdk.Tags.of(campaignsTable).add('Environment', 'Production');
+    cdk.Tags.of(campaignsTable).add('Table', 'EmailCampaigns');
+
+    // GSIs for campaigns
+    campaignsTable.addGlobalSecondaryIndex({
+      indexName: 'status-index',
+      partitionKey: { name: 'status', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'createdAt', type: dynamodb.AttributeType.STRING }
+    });
+
+    campaignsTable.addGlobalSecondaryIndex({
+      indexName: 'scheduled-index',
+      partitionKey: { name: 'scheduledAt', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'status', type: dynamodb.AttributeType.STRING }
+    });
+
+    campaignsTable.addGlobalSecondaryIndex({
+      indexName: 'template-index',
+      partitionKey: { name: 'templateId', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'createdAt', type: dynamodb.AttributeType.STRING }
+    });
+
     // Output table names for easy reference
     new cdk.CfnOutput(this, 'EmailTemplatesTableName', {
       value: emailTemplatesTable.tableName,
@@ -204,6 +237,11 @@ export class GoodBricksEmailDatabaseStack extends cdk.Stack {
       description: 'Name of the Audience DynamoDB table'
     });
 
+    new cdk.CfnOutput(this, 'EmailCampaignsTableName', {
+      value: campaignsTable.tableName,
+      description: 'Name of the Email Campaigns DynamoDB table'
+    });
+
     new cdk.CfnOutput(this, 'EmailTemplatesTableArn', {
       value: emailTemplatesTable.tableArn,
       description: 'ARN of the Email Templates DynamoDB table'
@@ -217,6 +255,11 @@ export class GoodBricksEmailDatabaseStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'AudienceTableArn', {
       value: audienceTable.tableArn,
       description: 'ARN of the Audience DynamoDB table'
+    });
+
+    new cdk.CfnOutput(this, 'EmailCampaignsTableArn', {
+      value: campaignsTable.tableArn,
+      description: 'ARN of the Email Campaigns DynamoDB table'
     });
 
     // S3: Buckets for templates and branded templates
