@@ -1,0 +1,37 @@
+{
+  "name": "@goodbricks/email-database-client",
+  "version": "1.0.0",
+  "description": "Database client for GoodBricks Email API DynamoDB tables",
+  "main": "database-client.js",
+  "scripts": {
+    "build": "tsc",
+    "deploy": "npm run build && npx cdk deploy --require-approval never --region us-west-2",
+    "synth": "npm run build && npx cdk synth --region us-west-2",
+    "bootstrap": "npx cdk bootstrap --region us-west-2",
+    "seed": "npm run build && node dist/seed.js",
+    "seed:dev": "npm run build && AWS_REGION=us-west-2 node dist/seed.js",
+    "clean": "rm -rf dist cdk.out",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.0.0",
+    "@aws-sdk/lib-dynamodb": "^3.0.0",
+    "@aws-sdk/client-s3": "^3.0.0",
+    "aws-cdk-lib": "^2.214.0",
+    "constructs": "^10.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "aws-cdk": "^2.1029.0",
+    "typescript": "^5.0.0"
+  },
+  "keywords": [
+    "aws",
+    "dynamodb",
+    "email",
+    "templates",
+    "goodbricks"
+  ],
+  "author": "GoodBricks",
+  "license": "ISC"
+}
