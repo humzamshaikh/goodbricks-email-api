@@ -1,0 +1,9 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-123",
+    "email": "john.doe@example.com"
+  },
+  "body": "{\"firstName\": \"Johnathan\", \"tags\": [\"subscribed\", \"premium\", \"vip\"], \"status\": \"active\"}"
+}
+
+
