@@ -1,0 +1,8 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-123",
+    "email": "john.doe@example.com"
+  }
+}
+
+

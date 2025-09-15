@@ -21,6 +21,7 @@
     "local:update-audience:ts": "node --loader ts-node/esm scripts/invoke-local.ts src/lambdas/put-updateaudienceapi/index.ts src/lambdas/put-updateaudienceapi/requests/request.json",
     "local:create-campaign:ts": "node --loader ts-node/esm scripts/invoke-local.ts src/lambdas/post-createcampaignapi/index.ts src/lambdas/post-createcampaignapi/requests/request.json",
     "local:create-audience-group:ts": "node --loader ts-node/esm scripts/invoke-local.ts src/lambdas/post-createaudiencegroupapi/index.ts src/lambdas/post-createaudiencegroupapi/requests/request.json",
+    "local:delete-audience:ts": "node --loader ts-node/esm scripts/invoke-local.ts src/lambdas/delete-deleteaudiencememberapi/index.ts src/lambdas/delete-deleteaudiencememberapi/requests/request.json",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
     "lint": "eslint . --ext .ts",
