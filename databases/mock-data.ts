@@ -241,3 +241,116 @@ export const mockBrandedTemplates = [
     body: '<html><body><h1 style="color: #4ECDC4;">Brand B Newsletter</h1><p>This week\'s updates from Brand B...</p></body></html>' 
   }
 ];
+
+// Mock Audience Data
+export const mockAudience = [
+  // User 1's audience
+  {
+    userId: 'cognito-user-123',
+    email: 'john.doe@example.com',
+    firstName: 'John',
+    lastName: 'Doe',
+    tags: ['subscribed', 'new', 'premium'],
+    lastModified: '2024-01-15T10:00:00Z'
+  },
+  {
+    userId: 'cognito-user-123',
+    email: 'jane.smith@example.com',
+    firstName: 'Jane',
+    lastName: 'Smith',
+    tags: ['subscribed', 'active'],
+    lastModified: '2024-01-16T14:30:00Z'
+  },
+  {
+    userId: 'cognito-user-123',
+    email: 'bob.wilson@example.com',
+    firstName: 'Bob',
+    lastName: 'Wilson',
+    tags: ['unsubscribed'],
+    lastModified: '2024-01-17T09:15:00Z'
+  },
+  {
+    userId: 'cognito-user-123',
+    email: 'alice.brown@example.com',
+    firstName: 'Alice',
+    lastName: 'Brown',
+    tags: ['subscribed', 'vip'],
+    lastModified: '2024-01-18T16:45:00Z'
+  },
+  {
+    userId: 'cognito-user-123',
+    email: 'charlie.davis@example.com',
+    firstName: 'Charlie',
+    lastName: 'Davis',
+    tags: ['subscribed', 'new'],
+    lastModified: '2024-01-19T11:20:00Z'
+  },
+
+  // User 2's audience
+  {
+    userId: 'cognito-user-456',
+    email: 'eve.johnson@example.com',
+    firstName: 'Eve',
+    lastName: 'Johnson',
+    tags: ['subscribed', 'premium'],
+    lastModified: '2024-01-20T08:30:00Z'
+  },
+  {
+    userId: 'cognito-user-456',
+    email: 'frank.miller@example.com',
+    firstName: 'Frank',
+    lastName: 'Miller',
+    tags: ['subscribed', 'active'],
+    lastModified: '2024-01-21T13:15:00Z'
+  },
+  {
+    userId: 'cognito-user-456',
+    email: 'grace.taylor@example.com',
+    firstName: 'Grace',
+    lastName: 'Taylor',
+    tags: ['subscribed', 'vip'],
+    lastModified: '2024-01-22T15:45:00Z'
+  },
+  {
+    userId: 'cognito-user-456',
+    email: 'henry.anderson@example.com',
+    firstName: 'Henry',
+    lastName: 'Anderson',
+    tags: ['unsubscribed'],
+    lastModified: '2024-01-23T10:00:00Z'
+  },
+
+  // User 3's audience
+  {
+    userId: 'cognito-user-789',
+    email: 'ivy.thomas@example.com',
+    firstName: 'Ivy',
+    lastName: 'Thomas',
+    tags: ['subscribed', 'new'],
+    lastModified: '2024-01-24T12:30:00Z'
+  },
+  {
+    userId: 'cognito-user-789',
+    email: 'jack.white@example.com',
+    firstName: 'Jack',
+    lastName: 'White',
+    tags: ['subscribed', 'active'],
+    lastModified: '2024-01-25T14:20:00Z'
+  },
+  {
+    userId: 'cognito-user-789',
+    email: 'karen.harris@example.com',
+    firstName: 'Karen',
+    lastName: 'Harris',
+    tags: ['subscribed', 'premium'],
+    lastModified: '2024-01-26T09:45:00Z'
+  },
+  {
+    userId: 'cognito-user-789',
+    email: 'leo.martin@example.com',
+    firstName: 'Leo',
+    lastName: 'Martin',
+    tags: ['deleted'],
+    lastModified: '2024-01-27T16:10:00Z'
+  }
+];

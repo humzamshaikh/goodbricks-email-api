@@ -14,6 +14,7 @@
     "local:get-hello:ts": "node --loader ts-node/esm scripts/invoke-local.ts src/lambdas/get-hello-world/index.ts src/lambdas/get-hello-world/requests/request.json",
     "local:sample:ts": "node --loader ts-node/esm scripts/invoke-local.ts src/lambdas/sample-lambda/index.ts src/lambdas/sample-lambda/requests/request.json",
     "local:get-email-templates:ts": "node --loader ts-node/esm scripts/invoke-local.ts src/lambdas/get-getemailtemplatesapi/index.ts src/lambdas/get-getemailtemplatesapi/requests/request.json",
+    "local:get-audience:ts": "node --loader ts-node/esm scripts/invoke-local.ts src/lambdas/get-getaudienceapi/index.ts src/lambdas/get-getaudienceapi/requests/request.json",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
     "lint": "eslint . --ext .ts",

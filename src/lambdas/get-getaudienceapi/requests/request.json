@@ -1,0 +1,16 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-123"
+  },
+  "queryStringParameters": {
+    "limit": "10"
+  },
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": null,
+  "isBase64Encoded": false,
+  "httpMethod": "GET",
+  "path": "/audience",
+  "resource": "/audience/{userId}"
+}
