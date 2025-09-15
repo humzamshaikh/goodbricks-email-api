@@ -1,0 +1,10 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-123"
+  },
+  "queryStringParameters": {
+    "limit": "25"
+  }
+}
+
+
