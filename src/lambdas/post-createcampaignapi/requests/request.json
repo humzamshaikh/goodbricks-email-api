@@ -1,0 +1,8 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-123"
+  },
+  "body": "{\"name\": \"Spring Onboarding\", \"description\": \"Onboarding series\", \"templateId\": \"welcome\", \"templateVersion\": 2, \"audienceSelection\": { \"type\": \"tag\", \"values\": [\"subscribed\"] }, \"status\": \"draft\", \"metadata\": { \"subject\": \"Welcome to GoodBricks!\", \"fromName\": \"GoodBricks Team\", \"fromEmail\": \"noreply@goodbricks.com\" }}"
+}
+
+

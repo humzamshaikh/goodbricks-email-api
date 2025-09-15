@@ -1,0 +1,8 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-123"
+  },
+  "body": "{\"group\": \"vip\", \"emails\": [\"john.doe@example.com\", \"jane.smith@example.com\"]}"
+}
+
+

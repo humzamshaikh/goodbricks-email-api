@@ -19,6 +19,8 @@
     "local:get-campaign-details:ts": "node --loader ts-node/esm scripts/invoke-local.ts src/lambdas/get-getcampaigndetailsapi/index.ts src/lambdas/get-getcampaigndetailsapi/requests/request.json",
     "local:update-campaign:ts": "node --loader ts-node/esm scripts/invoke-local.ts src/lambdas/put-updatecampaignapi/index.ts src/lambdas/put-updatecampaignapi/requests/request.json",
     "local:update-audience:ts": "node --loader ts-node/esm scripts/invoke-local.ts src/lambdas/put-updateaudienceapi/index.ts src/lambdas/put-updateaudienceapi/requests/request.json",
+    "local:create-campaign:ts": "node --loader ts-node/esm scripts/invoke-local.ts src/lambdas/post-createcampaignapi/index.ts src/lambdas/post-createcampaignapi/requests/request.json",
+    "local:create-audience-group:ts": "node --loader ts-node/esm scripts/invoke-local.ts src/lambdas/post-createaudiencegroupapi/index.ts src/lambdas/post-createaudiencegroupapi/requests/request.json",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
     "lint": "eslint . --ext .ts",
