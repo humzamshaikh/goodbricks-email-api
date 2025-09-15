@@ -41,7 +41,6 @@
     "deploy-put-updateaudienceapi": "lambda-build upload v1-put-updateaudienceapi -r us-west-1 -e src/lambdas/put-updateaudienceapi/index.ts",
     "deploy-put-updatecampaignapi": "lambda-build upload v1-put-updatecampaignapi -r us-west-1 -e src/lambdas/put-updatecampaignapi/index.ts",
     "deploy-put-updateaudienceapi": "lambda-build upload v1-put-updateaudienceapi -r us-west-1 -e src/lambdas/put-updateaudienceapi/index.ts",
-    "deploy-put-addaudiencetogroupapi": "lambda-build upload v1-put-addaudiencetogroupapi -r us-west-1 -e src/lambdas/put-addaudiencetogroupapi/index.ts",
     "deploy-delete-deleteaudiencememberapi": "lambda-build upload v1-delete-deleteaudiencememberapi -r us-west-1 -e src/lambdas/delete-deleteaudiencememberapi/index.ts"
   },
   "keywords": [
