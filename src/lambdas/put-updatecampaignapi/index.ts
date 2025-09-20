@@ -8,9 +8,7 @@ const dynamoClient = new DynamoDBClient({
 });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
-const TABLE_NAMES = {
-  EMAIL_CAMPAIGNS: process.env.EMAIL_CAMPAIGNS_TABLE_NAME || 'email-campaigns'
-} as const;
+const TABLE_NAME = process.env.MAIN_TABLE_NAME || 'goodbricks-email-main';
 
 interface UpdateCampaignRequest {
   name?: string;
@@ -56,6 +54,8 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<UpdateCampaignR
       throw new Error('No update fields provided');
     }
 
+    const lastModified = new Date().toISOString();
+
     // Build update expression dynamically
     const updateExpressions: string[] = [];
     const expressionAttributeNames: Record<string, string> = {};
@@ -64,7 +64,7 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<UpdateCampaignR
     // Always update lastModified
     updateExpressions.push('#lastModified = :lastModified');
     expressionAttributeNames['#lastModified'] = 'lastModified';
-    expressionAttributeValues[':lastModified'] = new Date().toISOString();
+    expressionAttributeValues[':lastModified'] = lastModified;
 
     // Handle each update field
     if (updates.name !== undefined) {
@@ -97,12 +97,6 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<UpdateCampaignR
       expressionAttributeValues[':audienceSelection'] = updates.audienceSelection;
     }
 
-    if (updates.status !== undefined) {
-      updateExpressions.push('#status = :status');
-      expressionAttributeNames['#status'] = 'status';
-      expressionAttributeValues[':status'] = updates.status;
-    }
-
     if (updates.scheduledAt !== undefined) {
       if (updates.scheduledAt === null) {
         // Remove scheduledAt attribute
@@ -121,11 +115,12 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<UpdateCampaignR
       expressionAttributeValues[':metadata'] = updates.metadata;
     }
 
+    // Update main campaign record
     const updateCommand = new UpdateCommand({
-      TableName: TABLE_NAMES.EMAIL_CAMPAIGNS,
+      TableName: TABLE_NAME,
       Key: {
-        userId: userId,
-        campaignId: campaignId
+        PK: `USER#${userId}`,
+        SK: `CAMPAIGN#${campaignId}`
       },
       UpdateExpression: `SET ${updateExpressions.join(', ')}`,
       ExpressionAttributeNames: expressionAttributeNames,
@@ -140,6 +135,31 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<UpdateCampaignR
         success: false,
         message: 'Campaign not found or update failed'
       };
+    }
+
+    // If status is being updated, also update the status index
+    if (updates.status !== undefined) {
+      const statusUpdateCommand = new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: {
+          PK: `CAMPAIGN_STATUS#${updates.status}`,
+          SK: `USER#${userId}#CAMPAIGN#${campaignId}`
+        },
+        UpdateExpression: 'SET #status = :status, #lastModified = :lastModified, #name = :name',
+        ExpressionAttributeNames: {
+          '#status': 'status',
+          '#lastModified': 'lastModified',
+          '#name': 'name'
+        },
+        ExpressionAttributeValues: {
+          ':status': updates.status,
+          ':lastModified': lastModified,
+          ':name': updates.name || result.Attributes.name
+        },
+        ReturnValues: 'ALL_NEW'
+      });
+
+      await docClient.send(statusUpdateCommand);
     }
 
     return {

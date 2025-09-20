@@ -1,189 +1,103 @@
 import { createHttpHandler, ApiGatewayEventLike } from '../../lib/handler.js';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, ScanCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
 
 // AWS Clients
 const dynamoClient = new DynamoDBClient({
   region: process.env.AWS_REGION || 'us-west-1'
 });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
-const s3Client = new S3Client({
-  region: process.env.AWS_REGION || 'us-west-1'
-});
 
-// Table and bucket names
-const EMAIL_TEMPLATES_TABLE = process.env.EMAIL_TEMPLATES_TABLE_NAME || 'email-templates';
-const TEMPLATES_BUCKET = process.env.TEMPLATES_BUCKET_NAME || 'gb-email-templates-900546257868-us-west-1';
-const BRANDED_TEMPLATES_BUCKET = process.env.BRANDED_TEMPLATES_BUCKET_NAME || 'gb-branded-templates-900546257868-us-west-1';
+const TABLE_NAME = process.env.MAIN_TABLE_NAME || 'goodbricks-email-main';
 
-// Types
 interface EmailTemplate {
-  id: string;
+  templateId: string;
   version: number;
   name: string;
   category: string;
-  
-  subject: string;
-  description: string;
-  isActive: string;
+  s3Path: string;
   createdAt: string;
-  updatedAt: string;
-  s3Key: string;
-  tags: string[];
-  content?: string; // Added when includeContent=true
+  isActive: boolean;
+  description?: string;
 }
 
-interface QueryParams {
-  category?: string;
-  search?: string;
-  includeContent?: boolean;
-  limit?: number;
-  activeOnly?: boolean;
+interface EmailTemplatesResponse {
+  templates: EmailTemplate[];
+  pagination?: {
+    nextToken?: string;
+    count: number;
+  };
 }
 
-// Helper function to fetch template content from S3
-async function fetchTemplateContent(s3Key: string, bucketName: string): Promise<string | null> {
+const handlerLogic = async (event: ApiGatewayEventLike): Promise<EmailTemplatesResponse> => {
   try {
-    const command = new GetObjectCommand({
-      Bucket: bucketName,
-      Key: s3Key
-    });
-    
-    const response = await s3Client.send(command);
-    const content = await response.Body?.transformToString();
-    return content || null;
-  } catch (error) {
-    console.error(`Error fetching template content from S3 (${s3Key}):`, error);
-    return null;
-  }
-}
+    // Extract query parameters
+    const category = event.queryStringParameters?.category;
+    const status = event.queryStringParameters?.status || 'ACTIVE';
+    const limit = event.queryStringParameters?.limit ? parseInt(event.queryStringParameters.limit) : 50;
+    const nextToken = event.queryStringParameters?.nextToken;
 
-// Helper function to search templates by text
-function searchTemplates(templates: EmailTemplate[], searchTerm: string): EmailTemplate[] {
-  const searchLower = searchTerm.toLowerCase();
-  return templates.filter(template => 
-    template.name.toLowerCase().includes(searchLower) ||
-    template.subject.toLowerCase().includes(searchLower) ||
-    template.description.toLowerCase().includes(searchLower) ||
-    template.tags.some(tag => tag.toLowerCase().includes(searchLower))
-  );
-}
+    let queryParams: any;
 
-// Main handler logic
-const handlerLogic = async (event: ApiGatewayEventLike) => {
-  try {
-    const queryParams: QueryParams = {
-      category: event.queryStringParameters?.category,
-      search: event.queryStringParameters?.search,
-      includeContent: event.queryStringParameters?.includeContent === 'true',
-      limit: event.queryStringParameters?.limit ? parseInt(event.queryStringParameters.limit) : undefined,
-      activeOnly: event.queryStringParameters?.activeOnly !== 'false' // Default to true
-    };
-
-    let templates: EmailTemplate[] = [];
-
-    // Query templates based on parameters
-    if (queryParams.category) {
-      // Query by category using GSI
-      const command = new QueryCommand({
-        TableName: EMAIL_TEMPLATES_TABLE,
-        IndexName: 'category-index',
-        KeyConditionExpression: 'category = :category',
+    // Query by category if specified
+    if (category) {
+      queryParams = {
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
         ExpressionAttributeValues: {
-          ':category': queryParams.category
+          ':pk': `TEMPLATE_CATEGORY#${category}`,
+          ':sk': 'TEMPLATE#'
         },
-        ScanIndexForward: false // Sort by createdAt descending
-      });
-
-      const result = await docClient.send(command);
-      templates = (result.Items as EmailTemplate[]) || [];
+        Limit: limit
+      };
     } else {
-      // Scan all templates
-      const command = new ScanCommand({
-        TableName: EMAIL_TEMPLATES_TABLE
-      });
-
-      const result = await docClient.send(command);
-      templates = (result.Items as EmailTemplate[]) || [];
+      // Query by status (default: ACTIVE templates)
+      queryParams = {
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+        ExpressionAttributeValues: {
+          ':pk': `TEMPLATE_STATUS#${status}`,
+          ':sk': 'TEMPLATE#'
+        },
+        Limit: limit
+      };
     }
 
-    // Filter by active status if requested
-    if (queryParams.activeOnly) {
-      templates = templates.filter(template => template.isActive === 'true');
+    // Add pagination token if provided
+    if (nextToken) {
+      queryParams.ExclusiveStartKey = JSON.parse(decodeURIComponent(nextToken));
     }
 
-    // Apply search filter if provided
-    if (queryParams.search) {
-      templates = searchTemplates(templates, queryParams.search);
-    }
+    const result = await docClient.send(new QueryCommand(queryParams));
 
-    // Sort by updatedAt descending
-    templates.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    const templates: EmailTemplate[] = (result.Items || []).map(item => ({
+      templateId: item.templateId,
+      version: item.version,
+      name: item.name,
+      category: item.category,
+      s3Path: item.s3Path,
+      createdAt: item.createdAt,
+      isActive: item.isActive,
+      description: item.description
+    }));
 
-    // Apply limit
-    if (queryParams.limit && queryParams.limit > 0) {
-      templates = templates.slice(0, queryParams.limit);
-    }
-
-    // Fetch template content from S3 if requested
-    if (queryParams.includeContent) {
-      const contentPromises = templates.map(async (template) => {
-        try {
-          // Try to fetch from base templates bucket first
-          let content = await fetchTemplateContent(template.s3Key, TEMPLATES_BUCKET);
-          
-          // If not found, try branded templates bucket
-          if (!content) {
-            const brandedKey = template.s3Key.replace('templates/', 'templates/').replace('.html', '_brandA.html');
-            content = await fetchTemplateContent(brandedKey, BRANDED_TEMPLATES_BUCKET);
-          }
-          
-          return {
-            ...template,
-            content: content || 'Template content not found'
-          };
-        } catch (error) {
-          console.error(`Error fetching content for template ${template.id}:`, error);
-          return {
-            ...template,
-            content: 'Error fetching template content'
-          };
-        }
-      });
-
-      templates = await Promise.all(contentPromises);
-    }
-
-    // Group templates by ID to get latest versions
-    const templateMap = new Map<string, EmailTemplate>();
-    templates.forEach(template => {
-      const existing = templateMap.get(template.id);
-      if (!existing || template.version > existing.version) {
-        templateMap.set(template.id, template);
-      }
-    });
-
-    const finalTemplates = Array.from(templateMap.values());
-
-    return {
-      success: true,
-      data: {
-        templates: finalTemplates,
-        count: finalTemplates.length,
-        query: {
-          category: queryParams.category,
-          search: queryParams.search,
-          includeContent: queryParams.includeContent,
-          limit: queryParams.limit,
-          activeOnly: queryParams.activeOnly
-        }
+    const response: EmailTemplatesResponse = {
+      templates,
+      pagination: {
+        count: templates.length
       }
     };
 
+    // Add nextToken if there are more results
+    if (result.LastEvaluatedKey) {
+      response.pagination!.nextToken = encodeURIComponent(JSON.stringify(result.LastEvaluatedKey));
+    }
+
+    return response;
+
   } catch (error) {
-    console.error('Error in get-getemailtemplatesapi:', error);
-    throw error;
+    console.error('Error fetching email templates:', error);
+    throw new Error(`Failed to fetch email templates: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
 

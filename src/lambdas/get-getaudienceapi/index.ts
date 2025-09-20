@@ -8,10 +8,7 @@ const dynamoClient = new DynamoDBClient({
 });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
-// Table names
-const TABLE_NAMES = {
-  AUDIENCE: process.env.AUDIENCE_TABLE_NAME || 'audience'
-} as const;
+const TABLE_NAME = process.env.MAIN_TABLE_NAME || 'goodbricks-email-main';
 
 interface AudienceMember {
   userId: string;
@@ -46,10 +43,11 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<AudienceRespons
     const nextToken = event.queryStringParameters?.nextToken;
 
     let queryParams: any = {
-      TableName: TABLE_NAMES.AUDIENCE,
-      KeyConditionExpression: 'userId = :userId',
+      TableName: TABLE_NAME,
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
       ExpressionAttributeValues: {
-        ':userId': userId
+        ':pk': `USER#${userId}`,
+        ':sk': 'AUDIENCE#'
       },
       Limit: limit
     };

@@ -2,15 +2,13 @@ import { createHttpHandler, ApiGatewayEventLike } from '../../lib/handler.js';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
 
-// AWS Clients (region us-west-1 by default)
+// AWS Clients
 const dynamoClient = new DynamoDBClient({
   region: process.env.AWS_REGION || 'us-west-1'
 });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
-const TABLE_NAMES = {
-  CAMPAIGNS: process.env.CAMPAIGNS_TABLE_NAME || 'email-campaigns'
-} as const;
+const TABLE_NAME = process.env.MAIN_TABLE_NAME || 'goodbricks-email-main';
 
 interface CampaignDetails {
   userId: string;
@@ -41,8 +39,11 @@ const handlerLogic = async (event: ApiGatewayEventLike) => {
 
     const result = await docClient.send(
       new GetCommand({
-        TableName: TABLE_NAMES.CAMPAIGNS,
-        Key: { userId, campaignId }
+        TableName: TABLE_NAME,
+        Key: { 
+          PK: `USER#${userId}`, 
+          SK: `CAMPAIGN#${campaignId}` 
+        }
       })
     );
 

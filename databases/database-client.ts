@@ -13,11 +13,9 @@ const dynamoClient = new DynamoDBClient({
 
 export const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
-// Table names (these will be available after CDK deployment)
+// Single table name (available after CDK deployment)
 export const TABLE_NAMES = {
-  EMAIL_TEMPLATES: process.env.EMAIL_TEMPLATES_TABLE_NAME || 'email-templates',
-  EMAIL_HISTORY: process.env.EMAIL_HISTORY_TABLE_NAME || 'email-history',
-  AUDIENCE: process.env.AUDIENCE_TABLE_NAME || 'audience'
+  MAIN_TABLE: process.env.MAIN_TABLE_NAME || 'goodbricks-email-main'
 } as const;
 
 // Export for easy importing in lambda functions

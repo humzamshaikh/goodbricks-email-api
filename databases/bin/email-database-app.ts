@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 import * as cdk from 'aws-cdk-lib';
-import { GoodBricksEmailDatabaseStack } from '../lib/email-database-stack';
+import { GoodBricksEmailSingleTableStack } from '../lib/single-table-stack';
 
 const app = new cdk.App();
-new GoodBricksEmailDatabaseStack(app, 'EmailTemplatesDatabaseStack', {
+
+// Single table stack - optimized architecture
+new GoodBricksEmailSingleTableStack(app, 'GoodBricksEmailSingleTableStack', {
   env: {
     account: '900546257868',
     region: 'us-west-1'
   },
-  description: 'DynamoDB tables for GoodBricks Email API - Email Templates and Email History'
+  description: 'Single table DynamoDB architecture for GoodBricks Email API'
 });

@@ -1,32 +1,33 @@
 # GoodBricks Email Database Infrastructure
 
-This CDK project creates the DynamoDB tables and S3 buckets for the GoodBricks Email API.
+This CDK project creates the single table DynamoDB architecture for the GoodBricks Email API.
 
-## Database Tables Created
+## Single Table Design
 
-### 1. Email Templates Table (`email-templates`)
-- **Primary Key**: `id` (String) + `version` (Number)
-- **Purpose**: Stores email template metadata and content references
-- **GSIs**:
-  - `category-index`: Query templates by category
-  - `active-index`: Query active/inactive templates
+### Main Table (`goodbricks-email-main`)
+- **Partition Key**: `PK` (String)
+- **Sort Key**: `SK` (String)
+- **Purpose**: Stores all email-related data in a single optimized table
+- **Architecture**: Single table design with no GSIs needed
 
-### 2. Email History Table (`email-history`)
-- **Primary Key**: `id` (String) + `timestamp` (String)
-- **Purpose**: Tracks email sending history and status
-- **GSIs**:
-  - `recipient-index`: Query by recipient email
-  - `template-index`: Query by template ID
-  - `status-index`: Query by email status
-  - `campaign-index`: Query by campaign ID
+### Entity Types and Access Patterns
 
-### 3. Email Analytics Table (`email-analytics`)
-- **Primary Key**: `templateId` (String) + `date` (String)
-- **Purpose**: Stores daily email performance metrics
-- **GSIs**:
-  - `campaign-index`: Query analytics by campaign ID
+| Entity Type | PK | SK | Access Pattern | Use Case |
+|-------------|----|----|----------------|----------|
+| TEMPLATE | TEMPLATE#{templateId} | VERSION#{version} | Get all templates, Get specific template version | Email template management |
+| TEMPLATE_CATEGORY | TEMPLATE_CATEGORY#{category} | TEMPLATE#{templateId}#VERSION#{version} | Get templates by category | Template browsing by category |
+| TEMPLATE_STATUS | TEMPLATE_STATUS#{status} | TEMPLATE#{templateId}#VERSION#{version} | Get active/inactive templates | Template filtering |
+| CAMPAIGN | USER#{userId} | CAMPAIGN#{campaignId} | Get campaigns for user | Campaign management |
+| CAMPAIGN_STATUS | CAMPAIGN_STATUS#{status} | USER#{userId}#CAMPAIGN#{campaignId} | Get campaigns by status | Campaign filtering |
+| AUDIENCE | USER#{userId} | AUDIENCE#{email} | Get audience for user | Audience management |
+| AUDIENCE_GROUP | USER#{userId} | GROUP#{groupId} | Get groups for user | Group management |
+| AUDIENCE_BY_GROUP | USER#{userId}#GROUP#{groupId} | AUDIENCE#{email} | Get audience by group | Group-based campaigns |
+| AUDIENCE_STATUS | AUDIENCE_STATUS#{status} | USER#{userId}#AUDIENCE#{email} | Get active/deleted audience | Audience filtering |
+| EMAIL_HISTORY | EMAIL_HISTORY#{email} | TIMESTAMP#{timestamp}#ID#{messageId} | Get email history by recipient | Email tracking |
+| CAMPAIGN_EMAILS | CAMPAIGN_EMAILS#{campaignId} | EMAIL#{email}#TIMESTAMP#{timestamp} | Get emails sent for campaign | Campaign analytics |
+| TRANSACTION_EMAIL | TRANSACTION_EMAIL#{transactionId} | TIMESTAMP#{timestamp} | Get transaction email details | Transaction receipts |
 
-## S3 Buckets Created
+## S3 Buckets
 
 ### 1. Email Templates Bucket (`gb-email-templates-{account}-{region}`)
 - **Purpose**: Stores base email template HTML files
@@ -49,11 +50,8 @@ This CDK project creates the DynamoDB tables and S3 buckets for the GoodBricks E
 # Install dependencies
 npm install
 
-# Deploy everything (builds, deploys, and seeds)
+# Deploy single table infrastructure
 npm run deploy
-
-# Or use the deployment script
-./deploy.sh
 ```
 
 ### Manual Deployment Steps
@@ -66,9 +64,6 @@ npm run bootstrap
 
 # Build and deploy
 npm run deploy
-
-# Seed with sample data
-npm run seed
 ```
 
 ### Development Commands
@@ -77,10 +72,7 @@ npm run seed
 npm run build
 
 # Deploy without building
-npx cdk deploy --region us-west-2
-
-# Seed database with mock data
-npm run seed
+npx cdk deploy GoodBricksEmailSingleTableStack --region us-west-1
 
 # Run tests
 npm test
@@ -109,87 +101,68 @@ npx cdk list
 
 The stack is configured to deploy to:
 - **AWS Account**: 900546257868
-- **Region**: us-west-2
+- **Region**: us-west-1
 
 ## Table Configuration
 
 - **Billing Mode**: Pay-per-request (no capacity planning needed)
 - **Point-in-time Recovery**: Enabled
-- **Removal Policy**: Retain (tables won't be deleted on stack deletion)
-- **TTL**: Enabled on email history table for automatic cleanup
+- **Removal Policy**: Retain (table won't be deleted on stack deletion)
+- **TTL**: Enabled for automatic cleanup of old email history
 
 ## Outputs
 
 After deployment, the following outputs will be available:
-- `EmailTemplatesTableName`: Name of the email templates table
-- `EmailHistoryTableName`: Name of the email history table
-- `EmailAnalyticsTableName`: Name of the email analytics table
-- `EmailTemplatesTableArn`: ARN of the email templates table
-- `EmailHistoryTableArn`: ARN of the email history table
-- `TemplatesBucketName`: Name of the S3 bucket for base templates
-- `BrandedTemplatesBucketName`: Name of the S3 bucket for branded templates
+- `MainTableName`: Name of the main DynamoDB table (`goodbricks-email-main`)
+- `MainTableArn`: ARN of the main DynamoDB table
+- `TemplatesBucketName`: S3 bucket for base email templates
+- `BrandedTemplatesBucketName`: S3 bucket for branded email templates
 
-## Testing Locally
+## Lambda Environment Variables
 
-Once deployed, you can test your lambdas locally against the real AWS tables by:
-
-1. Setting up AWS credentials in your local environment
-2. Using the table names in your lambda code
-3. Running your lambdas with `npm run local:ts`
-
-The tables will be accessible from your local development environment as long as your AWS credentials have the necessary permissions.
-
-## Mock Data and Seeding
-
-The database comes with comprehensive mock data for testing and development:
-
-### Mock Data Includes:
-- **6 Email Templates**: Welcome, password reset, newsletter, order confirmation, promotional
-- **5 Email History Records**: Various statuses (sent, opened, clicked)
-- **5 Analytics Records**: Daily performance metrics
-- **5 S3 Template Files**: HTML templates with proper structure
-- **4 Branded Templates**: Brand-specific template variations
-
-### Seeding the Database:
+Set this environment variable in your lambda functions:
 ```bash
-# Seed with all mock data
-npm run seed
-
-# Seed with development settings
-npm run seed:dev
+MAIN_TABLE_NAME=goodbricks-email-main
 ```
 
-The seed script will:
-1. Upload HTML templates to S3 buckets
-2. Populate DynamoDB tables with sample data
-3. Set up proper TTL values for history records
-4. Provide detailed logging of the seeding process
+## Benefits of Single Table Design
 
-## Using the Database Client
+1. **Cost Reduction**: No GSI charges (saves ~60-80% on DynamoDB costs)
+2. **Better Performance**: Single queries instead of multiple table joins
+3. **Simplified Architecture**: One table to manage instead of multiple
+4. **Scalable**: Better hot partition distribution
+5. **Maintainable**: Cleaner access patterns and reduced complexity
 
-A simple database client is provided for easy integration with your lambda functions:
+## Query Examples
 
 ```typescript
-import { docClient, TABLE_NAMES } from './database-client.js';
-import { GetCommand } from '@aws-sdk/lib-dynamodb';
+// Get all active templates
+const params = {
+  TableName: 'goodbricks-email-main',
+  KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+  ExpressionAttributeValues: {
+    ':pk': 'TEMPLATE_STATUS#ACTIVE',
+    ':sk': 'TEMPLATE#'
+  }
+};
 
-// Get a template
-const command = new GetCommand({
-  TableName: TABLE_NAMES.EMAIL_TEMPLATES,
-  Key: { id: 'template_001', version: 1 }
-});
+// Get user's campaigns
+const params = {
+  TableName: 'goodbricks-email-main',
+  KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+  ExpressionAttributeValues: {
+    ':pk': 'USER#user123',
+    ':sk': 'CAMPAIGN#'
+  }
+};
 
-const result = await docClient.send(command);
-```
-
-See `example-usage.ts` for more detailed examples of common operations.
-
-## Environment Variables
-
-Set these environment variables in your lambda functions to use the correct table names:
-
-```bash
-EMAIL_TEMPLATES_TABLE_NAME=email-templates
-EMAIL_HISTORY_TABLE_NAME=email-history
-AWS_REGION=us-west-2
+// Get audience by group
+const params = {
+  TableName: 'goodbricks-email-main',
+  KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+  ExpressionAttributeValues: {
+    ':pk': 'USER#user123#GROUP#newsletter',
+    ':sk': 'AUDIENCE#'
+  }
+};
 ```
