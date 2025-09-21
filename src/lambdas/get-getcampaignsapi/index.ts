@@ -1,6 +1,7 @@
 import { createHttpHandler, ApiGatewayEventLike } from '../../lib/handler.js';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { HttpError } from '../../lib/http.js';
 
 // AWS Clients
 const dynamoClient = new DynamoDBClient({
@@ -45,12 +46,12 @@ interface CampaignsResponse {
 }
 
 const handlerLogic = async (event: ApiGatewayEventLike): Promise<CampaignsResponse> => {
-  try {
-    const userId = event.pathParameters?.userId || event.queryStringParameters?.userId;
-    if (!userId) {
-      throw new Error('userId is required');
-    }
+  const userId = event.pathParameters?.userId || event.queryStringParameters?.userId;
+  if (!userId) {
+    throw new HttpError(400, 'userId is required');
+  }
 
+  try {
     const status = event.queryStringParameters?.status as CampaignItem['status'] | undefined;
     const scheduledFrom = event.queryStringParameters?.scheduledFrom; // ISO string
     const scheduledTo = event.queryStringParameters?.scheduledTo; // ISO string
@@ -110,7 +111,7 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<CampaignsRespon
     return response;
   } catch (error) {
     console.error('Error fetching campaigns:', error);
-    throw new Error(`Failed to fetch campaigns: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new HttpError(500, `Failed to fetch campaigns: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
 

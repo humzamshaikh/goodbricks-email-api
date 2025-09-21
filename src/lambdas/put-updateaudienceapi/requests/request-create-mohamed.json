@@ -1,0 +1,8 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-123",
+    "email": "omaralt148@gmail.com"
+  },
+  "body": "{\"firstName\": \"Mohamed\", \"lastName\": \"Shaikh\", \"tags\": [\"weekly-newsletter\", \"icsd\"], \"status\": \"active\"}"
+}
+

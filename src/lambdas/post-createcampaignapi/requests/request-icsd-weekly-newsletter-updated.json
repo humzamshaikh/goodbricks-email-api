@@ -1,0 +1,7 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-123"
+  },
+  "body": "{\"name\": \"ICSD Weekly Newsletter\", \"description\": \"Weekly newsletter for ICSD members with updates and events\", \"templateId\": \"newsletter\", \"templateVersion\": 1, \"audienceSelection\": { \"type\": \"tag\", \"values\": [\"weekly-newsletter\"] }, \"status\": \"draft\", \"metadata\": { \"subject\": \"ICSD Weekly Newsletter - This Week's Updates\", \"fromName\": \"ICSD Team\", \"fromEmail\": \"humza.shaikh22341@gmail.com\", \"previewText\": \"Stay updated with this week's ICSD news and upcoming events!\" }}"
+}
+

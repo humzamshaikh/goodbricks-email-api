@@ -22,6 +22,8 @@
     "local:create-campaign:ts": "node --loader ts-node/esm scripts/invoke-local.ts src/lambdas/post-createcampaignapi/index.ts src/lambdas/post-createcampaignapi/requests/request.json",
     "local:create-audience-group:ts": "node --loader ts-node/esm scripts/invoke-local.ts src/lambdas/post-createaudiencegroupapi/index.ts src/lambdas/post-createaudiencegroupapi/requests/request.json",
     "local:delete-audience:ts": "node --loader ts-node/esm scripts/invoke-local.ts src/lambdas/delete-deleteaudiencememberapi/index.ts src/lambdas/delete-deleteaudiencememberapi/requests/request.json",
+    "local:send-email:ts": "node --loader ts-node/esm scripts/invoke-local.ts src/lambdas/post-sendemailapi/index.ts src/lambdas/post-sendemailapi/requests/request.json",
+    "local:send-campaign:ts": "node --loader ts-node/esm scripts/invoke-local.ts src/lambdas/post-sendcampaignapi/index.ts src/lambdas/post-sendcampaignapi/requests/request.json",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
     "lint": "eslint . --ext .ts",
@@ -38,6 +40,7 @@
     "deploy-post-importaudienceapi": "lambda-build upload v1-post-importaudienceapi -r us-west-1 -e src/lambdas/post-importaudienceapi/index.ts",
     "deploy-post-createaudiencegroupapi": "lambda-build upload v1-post-createaudiencegroupapi -r us-west-1 -e src/lambdas/post-createaudiencegroupapi/index.ts",
     "deploy-post-sendemailapi": "lambda-build upload v1-post-sendemailapi -r us-west-1 -e src/lambdas/post-sendemailapi/index.ts",
+    "deploy-post-sendcampaignapi": "lambda-build upload v1-post-sendcampaignapi -r us-west-1 -e src/lambdas/post-sendcampaignapi/index.ts",
     "deploy-post-mastersendcampaignapi": "lambda-build upload v1-post-mastersendcampaignapi -r us-west-1 -e src/lambdas/post-mastersendcampaignapi/index.ts",
     "deploy-post-personalizedsendcampaignapi": "lambda-build upload v1-post-personalizedsendcampaignapi -r us-west-1 -e src/lambdas/post-personalizedsendcampaignapi/index.ts",
     "deploy-post-sendtransactionalemailapisuccess": "lambda-build upload v1-post-sendtransactionalemailapisuccess -r us-west-1 -e src/lambdas/post-sendtransactionalemailapisuccess/index.ts",
@@ -61,7 +64,8 @@
     "lambda-build": "^1.0.6",
     "@aws-sdk/client-dynamodb": "^3.0.0",
     "@aws-sdk/lib-dynamodb": "^3.0.0",
-    "@aws-sdk/client-s3": "^3.0.0"
+    "@aws-sdk/client-s3": "^3.0.0",
+    "@aws-sdk/client-ses": "^3.0.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.11",

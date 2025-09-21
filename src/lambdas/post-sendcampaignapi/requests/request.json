@@ -1,0 +1,7 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-123",
+    "campaignId": "cmp-123"
+  },
+  "body": "{}"
+}

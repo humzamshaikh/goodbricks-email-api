@@ -2,6 +2,7 @@ import { createHttpHandler, ApiGatewayEventLike } from '../../lib/handler.js';
 import { randomUUID } from 'node:crypto';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
+import { HttpError } from '../../lib/http.js';
 
 // AWS Clients
 const dynamoClient = new DynamoDBClient({
@@ -29,6 +30,8 @@ interface CreateCampaignRequest {
     fromName?: string;
     fromEmail?: string;
     previewText?: string;
+
+    
   };
 }
 
@@ -40,17 +43,17 @@ interface CreateCampaignResponse {
 }
 
 const handlerLogic = async (event: ApiGatewayEventLike): Promise<CreateCampaignResponse> => {
+  const userId = event.pathParameters?.userId || (event.body ? JSON.parse(event.body).userId : undefined);
+  if (!userId) {
+    throw new HttpError(400, 'userId is required');
+  }
+
+  const body = event.body ? JSON.parse(event.body) as CreateCampaignRequest : undefined;
+  if (!body || !body.name || !body.templateId || !body.audienceSelection) {
+    throw new HttpError(400, 'name, templateId, and audienceSelection are required');
+  }
+
   try {
-    const userId = event.pathParameters?.userId || (event.body ? JSON.parse(event.body).userId : undefined);
-    if (!userId) {
-      throw new Error('userId is required');
-    }
-
-    const body = event.body ? JSON.parse(event.body) as CreateCampaignRequest : undefined;
-    if (!body || !body.name || !body.templateId || !body.audienceSelection) {
-      throw new Error('name, templateId, and audienceSelection are required');
-    }
-
     const nowIso = new Date().toISOString();
     const campaignId = `cmp-${randomUUID().slice(0, 8)}`;
 
@@ -82,7 +85,7 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<CreateCampaignR
     return { success: true, campaignId, campaign: item, message: 'Campaign created' };
   } catch (error) {
     console.error('Error creating campaign:', error);
-    throw new Error(`Failed to create campaign: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new HttpError(500, `Failed to create campaign: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
 

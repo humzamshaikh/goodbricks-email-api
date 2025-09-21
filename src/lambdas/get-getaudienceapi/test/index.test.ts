@@ -86,7 +86,10 @@ describe('get-getaudienceapi', () => {
       ...mockEvent,
       queryStringParameters: { 
         limit: '1',
-        nextToken: encodeURIComponent(JSON.stringify({ userId: 'cognito-user-123', email: 'test@example.com' }))
+        nextToken: encodeURIComponent(JSON.stringify({ 
+          PK: 'USER#cognito-user-123', 
+          SK: 'AUDIENCE#test@example.com' 
+        }))
       }
     };
 

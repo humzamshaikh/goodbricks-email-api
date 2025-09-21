@@ -1,0 +1,6 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-123"
+  },
+  "body": "{\"name\": \"Test Holiday Campaign\", \"description\": \"A test campaign for holiday season\", \"templateId\": \"holiday\", \"templateVersion\": 1, \"audienceSelection\": { \"type\": \"tag\", \"values\": [\"subscribed\", \"vip\"] }, \"status\": \"draft\", \"scheduledAt\": \"2024-12-25T10:00:00Z\", \"metadata\": { \"subject\": \"Happy Holidays from GoodBricks!\", \"fromName\": \"Holiday Team\", \"fromEmail\": \"holiday@goodbricks.com\", \"previewText\": \"Check out our special holiday offers!\" }}"
+}
