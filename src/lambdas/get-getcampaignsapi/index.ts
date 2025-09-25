@@ -10,7 +10,7 @@ const dynamoClient = new DynamoDBClient({
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 const TABLE_NAMES = {
-  EMAIL_CAMPAIGNS: process.env.EMAIL_CAMPAIGNS_TABLE_NAME || 'email-campaigns'
+  MAIN_TABLE: process.env.MAIN_TABLE_NAME || 'goodbricks-email-main'
 } as const;
 
 interface CampaignItem {
@@ -23,6 +23,10 @@ interface CampaignItem {
   audienceSelection: {
     type: 'tag' | 'list' | 'all';
     values: string[];
+  };
+  recipients?: {
+    type: 'groups' | 'all_audience';
+    groupIds?: string[];
   };
   status: 'draft' | 'scheduled' | 'sending' | 'sent' | 'failed';
   scheduledAt?: string;
@@ -58,12 +62,13 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<CampaignsRespon
     const limit = event.queryStringParameters?.limit ? parseInt(event.queryStringParameters.limit) : 50;
     const nextToken = event.queryStringParameters?.nextToken;
 
-    // Query by userId and filter in-table due to current GSI design
+    // Query campaigns using the ORG_CAMPAIGNS index
     const queryParams: any = {
-      TableName: TABLE_NAMES.EMAIL_CAMPAIGNS,
-      KeyConditionExpression: 'userId = :userId',
+      TableName: TABLE_NAMES.MAIN_TABLE,
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
       ExpressionAttributeValues: {
-        ':userId': userId
+        ':pk': `ORG_CAMPAIGNS#${userId}`,
+        ':sk': 'CAMPAIGN#'
       },
       Limit: limit
     };

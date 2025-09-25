@@ -1,0 +1,15 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-mcc",
+    "groupId": "basic-members"
+  },
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"userId\":\"cognito-user-mcc\",\"groupId\":\"basic-members\",\"emails\":[\"eshaikh.omar@gmail.com\"]}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/add-audience-to-group/{userId}/{groupId}",
+  "resource": "/add-audience-to-group/{userId}/{groupId}"
+}

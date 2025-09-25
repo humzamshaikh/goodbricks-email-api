@@ -1,0 +1,12 @@
+{
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"userId\":\"cognito-user-icsd\",\"email\":\"omar.shaikh@goodbricks.org\",\"firstName\":\"Omar\",\"lastName\":\"Shaikh\",\"organization\":\"ICSD\"}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/create-audience-member",
+  "resource": "/create-audience-member"
+}

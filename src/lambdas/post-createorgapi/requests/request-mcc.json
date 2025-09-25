@@ -1,0 +1,14 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-mcc"
+  },
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"userId\":\"cognito-user-mcc\",\"orgName\":\"Muslim Community Center\",\"activeSubscribers\":15420,\"description\":\"A vibrant community center serving the Muslim community with educational programs, social services, and spiritual guidance.\",\"website\":\"https://www.mcccenter.org\",\"senderEmail\":\"info@mcccenter.org\",\"address\":\"1234 Community Drive, City, State 12345\",\"phone\":\"(555) 123-4567\"}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/create-org/{userId}",
+  "resource": "/create-org/{userId}"
+}

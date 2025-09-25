@@ -1,0 +1,14 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-mcc"
+  },
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"name\":\"Premium Members Exclusive Update\",\"description\":\"Exclusive newsletter for premium members with special events, early access announcements, and premium benefits\",\"templateId\":\"premium-newsletter-template\",\"templateVersion\":1,\"audienceSelection\":{\"type\":\"tag\",\"values\":[\"premium-members\"]},\"recipients\":{\"type\":\"groups\",\"groupIds\":[\"premium-members\"]},\"status\":\"draft\",\"metadata\":{\"subject\":\"MCC Premium Members - Exclusive Updates & Early Access\",\"fromName\":\"MCC Premium Team\",\"fromEmail\":\"premium@mcccenter.org\",\"previewText\":\"Your exclusive access to premium events and special announcements\"}}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/create-campaign/{userId}",
+  "resource": "/create-campaign/{userId}"
+}

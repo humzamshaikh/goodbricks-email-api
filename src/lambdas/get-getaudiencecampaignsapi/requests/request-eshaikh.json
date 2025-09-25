@@ -1,0 +1,15 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-mcc",
+    "email": "eshaikh.omar@gmail.com"
+  },
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{}",
+  "isBase64Encoded": false,
+  "httpMethod": "GET",
+  "path": "/audience-campaigns/{userId}/{email}",
+  "resource": "/audience-campaigns/{userId}/{email}"
+}

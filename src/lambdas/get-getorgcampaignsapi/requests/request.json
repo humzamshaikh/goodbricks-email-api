@@ -1,0 +1,16 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-icsd"
+  },
+  "queryStringParameters": {
+    "limit": "10"
+  },
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": null,
+  "isBase64Encoded": false,
+  "httpMethod": "GET",
+  "path": "/org-campaigns/{userId}",
+  "resource": "/org-campaigns/{userId}"
+}

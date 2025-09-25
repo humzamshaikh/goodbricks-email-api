@@ -1,0 +1,12 @@
+{
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"userId\":\"cognito-user-icsd\",\"orgName\":\"Islamic Center of San Diego\",\"activeSubscribers\":2685,\"description\":\"A leading Islamic community center serving San Diego and surrounding areas\",\"website\":\"https://www.icsd.org\",\"senderEmail\":\"info@icsd.org\",\"address\":\"1234 Main Street, San Diego, CA 92101\",\"phone\":\"(619) 555-0123\"}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/create-org",
+  "resource": "/create-org"
+}

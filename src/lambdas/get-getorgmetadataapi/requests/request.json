@@ -1,0 +1,14 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-icsd"
+  },
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": null,
+  "isBase64Encoded": false,
+  "httpMethod": "GET",
+  "path": "/org-metadata/{userId}",
+  "resource": "/org-metadata/{userId}"
+}

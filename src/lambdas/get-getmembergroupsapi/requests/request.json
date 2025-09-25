@@ -1,0 +1,15 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-icsd",
+    "email": "eshaikh.omar@gmail.com"
+  },
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": null,
+  "isBase64Encoded": false,
+  "httpMethod": "GET",
+  "path": "/member-groups/{userId}/{email}",
+  "resource": "/member-groups/{userId}/{email}"
+}

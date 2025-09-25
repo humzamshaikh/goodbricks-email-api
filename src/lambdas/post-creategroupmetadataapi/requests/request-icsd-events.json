@@ -1,0 +1,12 @@
+{
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"userId\":\"cognito-user-icsd\",\"groupId\":\"icsd-events\",\"groupName\":\"ICSD Event Notifications\",\"description\":\"ICSD members who receive notifications about upcoming events, programs, and activities\",\"memberCount\":890,\"totalCampaignsSent\":23,\"lastCampaignSent\":\"2025-09-18T16:30:00Z\",\"averageOpenRate\":0.58,\"averageClickRate\":0.32,\"isActive\":true}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/create-group-metadata",
+  "resource": "/create-group-metadata"
+}

@@ -1,0 +1,12 @@
+{
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"userId\":\"cognito-user-icsd\",\"groupId\":\"newsletter-subscribers\",\"groupName\":\"Newsletter Subscribers\",\"description\":\"Regular subscribers who receive weekly newsletters and updates\",\"memberCount\":1520,\"totalCampaignsSent\":45,\"lastCampaignSent\":\"2025-09-20T14:00:00Z\",\"averageOpenRate\":0.42,\"averageClickRate\":0.15,\"isActive\":true}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/create-group-metadata",
+  "resource": "/create-group-metadata"
+}

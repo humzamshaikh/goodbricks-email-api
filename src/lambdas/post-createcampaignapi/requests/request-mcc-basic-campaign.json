@@ -1,0 +1,14 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-mcc"
+  },
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"name\":\"Basic Members Newsletter\",\"description\":\"Monthly newsletter for basic members with community updates and general announcements\",\"templateId\":\"basic-newsletter-template\",\"templateVersion\":1,\"audienceSelection\":{\"type\":\"tag\",\"values\":[\"basic-members\"]},\"recipients\":{\"type\":\"groups\",\"groupIds\":[\"basic-members\"]},\"status\":\"draft\",\"metadata\":{\"subject\":\"MCC Basic Members Newsletter - Community Updates\",\"fromName\":\"MCC Community Center\",\"fromEmail\":\"info@mcccenter.org\",\"previewText\":\"Stay updated with the latest community news and events\"}}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/create-campaign/{userId}",
+  "resource": "/create-campaign/{userId}"
+}

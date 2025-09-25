@@ -1,0 +1,12 @@
+{
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"recipients\":[\"eshaikh.omar@gmail.com\"],\"subject\":\"Test Email from GoodBricks\",\"content\":{\"html\":\"<h1>Test Email</h1><p>This is a test email from the GoodBricks Email API.</p>\",\"text\":\"Test Email - This is a test email from the GoodBricks Email API.\"},\"fromEmail\":\"humza.shaikh2006@gmail.com\",\"fromName\":\"Humza Shaikh\"}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/send-email",
+  "resource": "/send-email"
+}

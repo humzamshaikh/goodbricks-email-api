@@ -1,8 +1,12 @@
 {
-  "pathParameters": {
-    "userId": "cognito-user-123"
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
   },
-  "body": "{\"group\": \"vip\", \"emails\": [\"john.doe@example.com\", \"jane.smith@example.com\"]}"
+  "body": "{\"userId\":\"cognito-user-icsd\",\"group\":\"newsletter-subscribers\",\"emails\":[\"eshaikh.omar@gmail.com\",\"omaralt148@gmail.com\"]}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/create-audience-group",
+  "resource": "/create-audience-group"
 }
-
-

@@ -10,29 +10,38 @@ const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 const TABLE_NAME = process.env.MAIN_TABLE_NAME || 'goodbricks-email-main';
 
-interface AudienceGroup {
-  groupId: string;
-  name: string;
-  description?: string;
+interface GroupAudienceMember {
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  tags: string[];
+  organization: string;
+  entityType: string;
   createdAt: string;
   lastModified: string;
-  memberCount?: number;
 }
 
-interface AudienceGroupsResponse {
-  groups: AudienceGroup[];
+interface GroupAudienceResponse {
+  groupId: string;
+  audience: GroupAudienceMember[];
   pagination?: {
     nextToken?: string;
     count: number;
   };
 }
 
-const handlerLogic = async (event: ApiGatewayEventLike): Promise<AudienceGroupsResponse> => {
+const handlerLogic = async (event: ApiGatewayEventLike): Promise<GroupAudienceResponse> => {
   try {
     const userId = event.pathParameters?.userId || event.queryStringParameters?.userId;
+    const groupId = event.pathParameters?.groupId || event.queryStringParameters?.groupId;
     
     if (!userId) {
       throw new Error('userId is required');
+    }
+
+    if (!groupId) {
+      throw new Error('groupId is required');
     }
 
     const limit = event.queryStringParameters?.limit ? parseInt(event.queryStringParameters.limit) : 50;
@@ -42,8 +51,8 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<AudienceGroupsR
       TableName: TABLE_NAME,
       KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
       ExpressionAttributeValues: {
-        ':pk': `USER#${userId}`,
-        ':sk': 'GROUP#'
+        ':pk': `USER#${userId}#GROUP#${groupId}`,
+        ':sk': 'AUDIENCE#'
       },
       Limit: limit
     };
@@ -55,34 +64,23 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<AudienceGroupsR
 
     const result = await docClient.send(new QueryCommand(queryParams));
 
-    const groups: AudienceGroup[] = (result.Items || []).map(item => ({
-      groupId: item.groupId,
-      name: item.name,
-      description: item.description,
+    const audience: GroupAudienceMember[] = (result.Items || []).map(item => ({
+      userId: item.userId,
+      email: item.email,
+      firstName: item.firstName,
+      lastName: item.lastName,
+      tags: item.tags || [],
+      organization: item.organization || '',
+      entityType: item.entityType || 'AUDIENCE',
       createdAt: item.createdAt,
-      lastModified: item.lastModified,
-      memberCount: item.memberCount
+      lastModified: item.lastModified
     }));
 
-    // Get member counts for each group
-    for (const group of groups) {
-      const memberCountResult = await docClient.send(new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
-        ExpressionAttributeValues: {
-          ':pk': `USER#${userId}#GROUP#${group.groupId}`,
-          ':sk': 'AUDIENCE#'
-        },
-        Select: 'COUNT'
-      }));
-      
-      group.memberCount = memberCountResult.Count || 0;
-    }
-
-    const response: AudienceGroupsResponse = {
-      groups,
+    const response: GroupAudienceResponse = {
+      groupId: groupId,
+      audience,
       pagination: {
-        count: groups.length
+        count: audience.length
       }
     };
 
@@ -94,8 +92,8 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<AudienceGroupsR
     return response;
 
   } catch (error) {
-    console.error('Error fetching audience groups:', error);
-    throw new Error(`Failed to fetch audience groups: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error('Error fetching group audience:', error);
+    throw new Error(`Failed to fetch group audience: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
 

@@ -1,0 +1,12 @@
+{
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"userId\":\"cognito-user-icsd\",\"groupId\":\"vip-members\",\"groupName\":\"VIP Members\",\"description\":\"High-value subscribers who receive exclusive content and early access\",\"memberCount\":245,\"totalCampaignsSent\":12,\"lastCampaignSent\":\"2025-09-15T10:00:00Z\",\"averageOpenRate\":0.68,\"averageClickRate\":0.23,\"isActive\":true}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/create-group-metadata",
+  "resource": "/create-group-metadata"
+}

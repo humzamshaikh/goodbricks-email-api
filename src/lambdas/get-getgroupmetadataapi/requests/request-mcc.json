@@ -1,0 +1,16 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-mcc"
+  },
+  "queryStringParameters": {
+    "limit": "10"
+  },
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": null,
+  "isBase64Encoded": false,
+  "httpMethod": "GET",
+  "path": "/group-metadata/{userId}",
+  "resource": "/group-metadata/{userId}"
+}

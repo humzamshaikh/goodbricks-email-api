@@ -1,0 +1,14 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-mcc"
+  },
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"userId\":\"cognito-user-mcc\",\"email\":\"omar.shaikh@goodbricks.org\",\"firstName\":\"Omar\",\"lastName\":\"Shaikh\",\"tags\":[],\"organization\":\"Muslim Community Center\"}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/create-audience-member/{userId}",
+  "resource": "/create-audience-member/{userId}"
+}

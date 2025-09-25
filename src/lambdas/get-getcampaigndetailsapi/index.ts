@@ -21,6 +21,10 @@ interface CampaignDetails {
     type: 'tag' | 'list' | 'all';
     values?: string[];
   };
+  recipients?: {
+    type: 'groups' | 'all_audience';
+    groupIds?: string[];
+  };
   status?: 'draft' | 'scheduled' | 'sending' | 'sent' | 'failed';
   scheduledAt?: string;
   sentAt?: string;

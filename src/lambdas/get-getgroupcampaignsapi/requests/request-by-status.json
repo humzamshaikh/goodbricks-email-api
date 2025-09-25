@@ -1,9 +1,10 @@
 {
   "pathParameters": {
-    "userId": "cognito-user-123",
-    "group": "subscribed"
+    "userId": "cognito-user-icsd",
+    "groupId": "vip-members"
   },
   "queryStringParameters": {
+    "status": "sent",
     "limit": "10"
   },
   "headers": {
@@ -12,6 +13,6 @@
   "body": null,
   "isBase64Encoded": false,
   "httpMethod": "GET",
-  "path": "/audience/group",
-  "resource": "/audience/{userId}/group/{group}"
+  "path": "/group-campaigns/{userId}/{groupId}",
+  "resource": "/group-campaigns/{userId}/{groupId}"
 }

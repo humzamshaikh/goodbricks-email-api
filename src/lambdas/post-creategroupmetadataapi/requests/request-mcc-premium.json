@@ -1,0 +1,14 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-mcc"
+  },
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"userId\":\"cognito-user-mcc\",\"groupId\":\"premium-members\",\"groupName\":\"Premium Members\",\"description\":\"Exclusive group for premium members with special benefits and early access to events\",\"memberCount\":0,\"totalCampaignsSent\":0,\"lastCampaignSent\":\"\",\"averageOpenRate\":0,\"averageClickRate\":0,\"isActive\":true}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/create-group-metadata/{userId}",
+  "resource": "/create-group-metadata/{userId}"
+}

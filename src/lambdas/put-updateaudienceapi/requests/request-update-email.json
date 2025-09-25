@@ -1,0 +1,15 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-mcc",
+    "email": "eshaik.omar@gmail.com"
+  },
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"email\":\"new-email@example.com\",\"firstName\":\"Omar\",\"lastName\":\"Shaikh\",\"organization\":\"Muslim Community Center\",\"entityType\":\"AUDIENCE\"}",
+  "isBase64Encoded": false,
+  "httpMethod": "PUT",
+  "path": "/update-audience/{userId}/{email}",
+  "resource": "/update-audience/{userId}/{email}"
+}

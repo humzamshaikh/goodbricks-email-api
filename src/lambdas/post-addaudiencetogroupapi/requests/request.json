@@ -1,0 +1,12 @@
+{
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"userId\":\"cognito-user-icsd\",\"groupId\":\"vip-members\",\"emails\":[\"eshaikh.omar@gmail.com\",\"omaralt148@gmail.com\"]}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/add-audience-to-group",
+  "resource": "/add-audience-to-group"
+}
