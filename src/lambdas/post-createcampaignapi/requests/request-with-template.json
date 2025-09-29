@@ -1,0 +1,24 @@
+{
+  "body": {
+    "userId": "cognito-user-mcc",
+    "name": "Welcome Campaign with Template",
+    "description": "Campaign using welcome email template",
+    "templateId": "welcome-email",
+    "templateVersion": "v1.0.0",
+    "audienceSelection": {
+      "type": "tag",
+      "values": ["basic-members"]
+    },
+    "recipients": {
+      "type": "groups",
+      "groupIds": ["basic-members"]
+    },
+    "status": "draft",
+    "metadata": {
+      "subject": "Welcome to GoodBricks!",
+      "fromName": "GoodBricks Team",
+      "fromEmail": "noreply@goodbricks.org",
+      "previewText": "We're excited to have you on board!"
+    }
+  }
+}

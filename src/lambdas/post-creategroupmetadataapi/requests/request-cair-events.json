@@ -1,0 +1,11 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-cair"
+  },
+  "body": "{\"userId\":\"cognito-user-cair\",\"groupId\":\"events\",\"groupName\":\"Events\",\"description\":\"Group for event announcements and updates\",\"memberCount\":0,\"totalCampaignsSent\":0,\"isActive\":true}",
+  "httpMethod": "POST",
+  "path": "/create-group-metadata/{userId}",
+  "headers": {
+    "Content-Type": "application/json"
+  }
+}

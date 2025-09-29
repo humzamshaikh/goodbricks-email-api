@@ -1,6 +1,6 @@
 import { createHttpHandler, ApiGatewayEventLike } from '../../lib/handler.js';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
 
 // AWS Clients
 const dynamoClient = new DynamoDBClient({
@@ -9,6 +9,10 @@ const dynamoClient = new DynamoDBClient({
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 const TABLE_NAME = process.env.MAIN_TABLE_NAME || 'goodbricks-email-main';
+
+interface GetOrgMetadataRequest {
+  cognitoId: string;
+}
 
 interface OrgMetadata {
   userId: string;
@@ -24,46 +28,59 @@ interface OrgMetadata {
 }
 
 interface OrgMetadataResponse {
-  orgMetadata: OrgMetadata;
+  success: boolean;
+  orgMetadata: OrgMetadata[];
+  totalCount: number;
+  message?: string;
 }
 
 const handlerLogic = async (event: ApiGatewayEventLike): Promise<OrgMetadataResponse> => {
   try {
-    const userId = event.pathParameters?.userId || event.queryStringParameters?.userId;
+    // Parse request body to get cognitoId
+    const body = event.body ? JSON.parse(event.body) : {};
+    const cognitoId = body.cognitoId;
     
-    if (!userId) {
-      throw new Error('userId is required');
+    if (!cognitoId) {
+      throw new Error('cognitoId is required in request body');
     }
 
-    const getParams = {
+    console.log(`Getting organization metadata for user: ${cognitoId}`);
+
+    // Query using new PK/SK pattern
+    const queryParams = {
       TableName: TABLE_NAME,
-      Key: {
-        PK: `USER#${userId}`,
-        SK: 'ORGMETADATA'
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+      ExpressionAttributeValues: {
+        ':pk': `USER#${cognitoId}`,
+        ':sk': 'ORGMETADATA'
       }
     };
 
-    const result = await docClient.send(new GetCommand(getParams));
+    const result = await docClient.send(new QueryCommand(queryParams));
 
-    if (!result.Item) {
-      throw new Error('Organization metadata not found');
-    }
+    console.log(`Found ${result.Items?.length || 0} organization metadata records for user: ${cognitoId}`);
 
-    const orgMetadata: OrgMetadata = {
-      userId: result.Item.userId,
-      orgName: result.Item.orgName,
-      activeSubscribers: result.Item.activeSubscribers || 0,
-      description: result.Item.description || '',
-      website: result.Item.website || '',
-      senderEmail: result.Item.senderEmail || '',
-      address: result.Item.address || '',
-      phone: result.Item.phone || '',
-      createdAt: result.Item.createdAt,
-      lastModified: result.Item.lastModified
-    };
+    // Map query results to OrgMetadata objects
+    const orgMetadata: OrgMetadata[] = (result.Items || []).map(item => ({
+      userId: item.userId,
+      orgName: item.orgName,
+      activeSubscribers: item.activeSubscribers || 0,
+      description: item.description || '',
+      website: item.website || '',
+      senderEmail: item.senderEmail || '',
+      address: item.address || '',
+      phone: item.phone || '',
+      createdAt: item.createdAt,
+      lastModified: item.lastModified
+    }));
+
+    console.log(`Returning ${orgMetadata.length} organization metadata records`);
 
     return {
-      orgMetadata
+      success: true,
+      orgMetadata,
+      totalCount: orgMetadata.length,
+      message: `Found ${orgMetadata.length} organization metadata records for user: ${cognitoId}`
     };
 
   } catch (error) {

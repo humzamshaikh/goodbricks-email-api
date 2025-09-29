@@ -1,0 +1,25 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-mcc"
+  },
+  "body": {
+    "name": "Test Bulk Email Campaign",
+    "description": "Testing bulk email functionality",
+    "metadata": {
+      "subject": "Test Newsletter - Bulk Email Test",
+      "fromEmail": "omaralt148@gmail.com",
+      "fromName": "Test Team"
+    },
+    "recipients": {
+      "type": "groups",
+      "groupIds": ["basic-members"]
+    },
+    "templateId": "simple-newsletter",
+    "templateVersion": "latest"
+  },
+  "httpMethod": "POST",
+  "path": "/create-campaign/{userId}",
+  "headers": {
+    "Content-Type": "application/json"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "body": {
+    "layoutId": "welcome-email",
+    "version": "v1.0.1",
+    "data": { "name": "Omar", "companyName": "GoodBricks" }
+  }
+}
+

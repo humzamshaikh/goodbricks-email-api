@@ -1,0 +1,15 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-mcc",
+    "campaignId": "cmp-3d11a33a"
+  },
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/send-campaign-v2/{userId}/{campaignId}",
+  "resource": "/send-campaign-v2/{userId}/{campaignId}"
+}

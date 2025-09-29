@@ -1,0 +1,14 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-cair"
+  },
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"userId\":\"cognito-user-cair\",\"orgName\":\"CAIR\",\"activeSubscribers\":5000,\"description\":\"Council on American-Islamic Relations - A leading advocacy organization for American Muslims\",\"website\":\"https://www.cair.com\",\"senderEmail\":\"humza.shaikh22341@gmail.com\",\"address\":\"453 New Jersey Avenue NW, Washington, DC 20001\",\"phone\":\"(202) 488-8787\"}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/create-org/{userId}",
+  "resource": "/create-org/{userId}"
+}

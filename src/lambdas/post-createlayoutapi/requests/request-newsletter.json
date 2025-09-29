@@ -1,0 +1,10 @@
+{
+  "body": {
+    "layoutId": "weekly-newsletter",
+    "version": "v1.0.0",
+    "name": "Weekly Newsletter",
+    "description": "Weekly newsletter template for community updates",
+    "category": "newsletter",
+    "jsxCode": "import React from 'react';\n\nexport const WeeklyNewsletter = ({ weekNumber, articles, featuredStory }) => {\n  return (\n    <div style={{ fontFamily: 'Arial, sans-serif', maxWidth: '600px', margin: '0 auto' }}>\n      <header style={{ backgroundColor: '#0ea5e9', color: 'white', padding: '20px', textAlign: 'center' }}>\n        <h1>GoodBricks Weekly Newsletter</h1>\n        <p>Week {weekNumber}</p>\n      </header>\n      <main style={{ padding: '20px' }}>\n        <h2>Featured Story</h2>\n        <p>{featuredStory}</p>\n        <h3>This Week's Articles</h3>\n        <ul>\n          {articles.map((article, index) => (\n            <li key={index}>\n              <strong>{article.title}</strong> - {article.summary}\n            </li>\n          ))}\n        </ul>\n      </main>\n      <footer style={{ backgroundColor: '#f3f4f6', padding: '20px', textAlign: 'center' }}>\n        <p>© 2025 GoodBricks Community</p>\n      </footer>\n    </div>\n  );\n};"
+  }
+}

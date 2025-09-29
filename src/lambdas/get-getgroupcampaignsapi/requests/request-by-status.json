@@ -1,18 +1,3 @@
 {
-  "pathParameters": {
-    "userId": "cognito-user-icsd",
-    "groupId": "vip-members"
-  },
-  "queryStringParameters": {
-    "status": "sent",
-    "limit": "10"
-  },
-  "headers": {
-    "Content-Type": "application/json"
-  },
-  "body": null,
-  "isBase64Encoded": false,
-  "httpMethod": "GET",
-  "path": "/group-campaigns/{userId}/{groupId}",
-  "resource": "/group-campaigns/{userId}/{groupId}"
+  "body": "{\"cognitoId\": \"cognito-user-cair\", \"groupId\": \"volunteers\", \"limit\": 20, \"status\": \"sent\"}"
 }

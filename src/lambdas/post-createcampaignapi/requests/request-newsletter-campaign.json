@@ -1,0 +1,6 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-mcc"
+  },
+  "body": "{\"name\": \"Weekly Newsletter Campaign\", \"description\": \"Campaign using weekly newsletter template\", \"templateId\": \"weekly-newsletter\", \"audienceSelection\": { \"type\": \"tag\", \"values\": [\"premium-members\"] }, \"recipients\": { \"type\": \"groups\", \"groupIds\": [\"premium-members\"] }, \"status\": \"draft\", \"metadata\": { \"subject\": \"Your Weekly Update!\", \"fromName\": \"GoodBricks Team\", \"fromEmail\": \"noreply@goodbricks.org\" }}"
+}

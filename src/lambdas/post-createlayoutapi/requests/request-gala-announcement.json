@@ -1,0 +1,15 @@
+{
+  "body": {
+    "layoutId": "event-gala-announcement",
+    "version": "v1.0.0",
+    "name": "Event Gala Announcement",
+    "description": "Personalized gala invitation using first and last name variables",
+    "category": "event",
+    "jsxCode": "import React from 'react';\n\nexport default function GalaAnnouncement({ firstName, lastName }) {\n  return (\n    <div style={{ fontFamily: 'Arial, sans-serif', maxWidth: '600px', margin: '0 auto', padding: '24px', backgroundColor: '#f6f9fc' }}>\n      <div style={{ backgroundColor: '#ffffff', border: '1px solid #e6e8eb', borderRadius: '8px', padding: '24px' }}>\n        <h1 style={{ margin: 0, textAlign: 'center', color: '#111827', fontSize: '22px' }}>You\\'re Invited to Our Annual Gala</h1>\n        <p style={{ marginTop: '16px', fontSize: '15px', color: '#111827' }}>Dear {firstName} {lastName},</p>\n        <p style={{ fontSize: '15px', color: '#111827', marginTop: '8px' }}>\n          Join us for an inspiring evening celebrating community impact, stories of service, and a vision for the year ahead.\n        </p>\n        <div style={{ backgroundColor: '#f4f4f4', borderRadius: '8px', padding: '16px', margin: '16px 0' }}>\n          <p style={{ margin: '0 0 8px 0', fontSize: '14px' }}><strong>Date:</strong> Saturday, Oct 26</p>\n          <p style={{ margin: '0 0 8px 0', fontSize: '14px' }}><strong>Time:</strong> 6:00 PM</p>\n          <p style={{ margin: 0, fontSize: '14px' }}><strong>Location:</strong> Town & Country Resort, San Diego</p>\n        </div>\n        <p style={{ textAlign: 'center', margin: '20px 0' }}>\n          <a href=\"https://ca.cair.com/events/cair-sd-18th-annual-gala/\" style={{ display: 'inline-block', textDecoration: 'none', backgroundColor: '#111827', color: '#ffffff', padding: '12px 18px', borderRadius: '6px', fontSize: '14px' }}>RSVP Now</a>\n        </p>\n        <p style={{ fontSize: '12px', color: '#6b7280', textAlign: 'center', marginTop: '8px' }}>\n          Can\\'t make it? Please share this invitation with a friend.\n        </p>\n      </div>\n      <p style={{ fontSize: '12px', color: '#9ca3af', textAlign: 'center', marginTop: '16px' }}>\n        © {new Date().getFullYear()} Community Organization. All rights reserved.\n      </p>\n    </div>\n  );\n}\n"
+  },
+  "httpMethod": "POST",
+  "path": "/create-layout",
+  "headers": {
+    "Content-Type": "application/json"
+  }
+}

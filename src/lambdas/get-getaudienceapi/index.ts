@@ -10,6 +10,10 @@ const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 const TABLE_NAME = process.env.MAIN_TABLE_NAME || 'goodbricks-email-main';
 
+interface GetAudienceRequest {
+  cognitoId: string;
+}
+
 interface AudienceMember {
   userId: string;
   email: string;
@@ -29,11 +33,12 @@ interface AudienceResponse {
 
 const handlerLogic = async (event: ApiGatewayEventLike): Promise<AudienceResponse> => {
   try {
-    // Extract userId from path parameters or query parameters
-    const userId = event.pathParameters?.userId || event.queryStringParameters?.userId;
+    // Parse request body to get cognitoId
+    const body = event.body ? JSON.parse(event.body) : {};
+    const cognitoId = body.cognitoId;
     
-    if (!userId) {
-      throw new Error('userId is required');
+    if (!cognitoId) {
+      throw new Error('cognitoId is required in request body');
     }
 
     // Extract query parameters
@@ -46,8 +51,8 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<AudienceRespons
       TableName: TABLE_NAME,
       KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
       ExpressionAttributeValues: {
-        ':pk': `USER#${userId}`,
-        ':sk': 'AUDIENCE#'
+        ':pk': `USER#${cognitoId}`,
+        ':sk': 'AUDIENCE'
       },
       Limit: limit
     };

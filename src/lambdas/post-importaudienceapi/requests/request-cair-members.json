@@ -1,0 +1,11 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-cair"
+  },
+  "body": "{\"userId\":\"cognito-user-cair\",\"organization\":\"CAIR\",\"members\":[{\"email\":\"humza.shaikh2006@gmail.com\",\"firstName\":\"Humza\",\"lastName\":\"Shaikh\"},{\"email\":\"omaralt148@gmail.com\",\"firstName\":\"Omar\",\"lastName\":\"Shaikh\"},{\"email\":\"eshaikh.omar@gmail.com\",\"firstName\":\"Enayat\",\"lastName\":\"Shaikh\"}],\"entityType\":\"AUDIENCE\"}",
+  "httpMethod": "POST",
+  "path": "/import-audience/{userId}",
+  "headers": {
+    "Content-Type": "application/json"
+  }
+}

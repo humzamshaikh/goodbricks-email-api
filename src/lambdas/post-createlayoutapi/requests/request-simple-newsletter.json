@@ -1,0 +1,15 @@
+{
+  "body": {
+    "layoutId": "simple-newsletter",
+    "version": "v1.0.0",
+    "name": "Simple Newsletter",
+    "description": "Simple newsletter template for testing",
+    "category": "newsletter",
+    "jsxCode": "import React from 'react';\n\nexport default function SimpleNewsletter({ userName, weekNumber, featuredStory }) {\n  return (\n    <div style={{ fontFamily: 'Arial, sans-serif', maxWidth: '600px', margin: '0 auto', padding: '20px' }}>\n      <h1 style={{ color: '#333', textAlign: 'center' }}>Weekly Newsletter</h1>\n      <p>Hello {userName},</p>\n      <p>Welcome to Week {weekNumber} of our newsletter!</p>\n      \n      <div style={{ backgroundColor: '#f4f4f4', padding: '20px', margin: '20px 0', borderRadius: '8px' }}>\n        <h2 style={{ color: '#2c5aa0' }}>Featured Story</h2>\n        <p>{featuredStory}</p>\n      </div>\n      \n      <p style={{ textAlign: 'center', color: '#666', fontSize: '14px' }}>\n        Thank you for reading!\n      </p>\n    </div>\n  );\n}"
+  },
+  "httpMethod": "POST",
+  "path": "/create-layout",
+  "headers": {
+    "Content-Type": "application/json"
+  }
+}

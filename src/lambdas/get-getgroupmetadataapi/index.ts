@@ -10,6 +10,10 @@ const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 const TABLE_NAME = process.env.MAIN_TABLE_NAME || 'goodbricks-email-main';
 
+interface GetGroupMetadataRequest {
+  cognitoId: string;
+}
+
 interface GroupMetadata {
   userId: string;
   groupId: string;
@@ -26,38 +30,32 @@ interface GroupMetadata {
 }
 
 interface GroupMetadataResponse {
+  success: boolean;
   groups: GroupMetadata[];
-  pagination?: {
-    nextToken?: string;
-    count: number;
-  };
+  totalCount: number;
+  message?: string;
 }
 
 const handlerLogic = async (event: ApiGatewayEventLike): Promise<GroupMetadataResponse> => {
   try {
-    const userId = event.pathParameters?.userId || event.queryStringParameters?.userId;
+    // Parse request body to get cognitoId
+    const body = event.body ? JSON.parse(event.body) : {};
+    const cognitoId = body.cognitoId;
     
-    if (!userId) {
-      throw new Error('userId is required');
+    if (!cognitoId) {
+      throw new Error('cognitoId is required in request body');
     }
 
-    const limit = event.queryStringParameters?.limit ? parseInt(event.queryStringParameters.limit) : 50;
-    const nextToken = event.queryStringParameters?.nextToken;
+    console.log(`Getting group metadata for user: ${cognitoId}`);
 
     let queryParams: any = {
       TableName: TABLE_NAME,
       KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
       ExpressionAttributeValues: {
-        ':pk': `USER#${userId}`,
-        ':sk': 'GROUPMETADATA#'
-      },
-      Limit: limit
+        ':pk': `USER#${cognitoId}`,
+        ':sk': 'GROUPMETADATA'
+      }
     };
-
-    // Add pagination token if provided
-    if (nextToken) {
-      queryParams.ExclusiveStartKey = JSON.parse(decodeURIComponent(nextToken));
-    }
 
     const result = await docClient.send(new QueryCommand(queryParams));
 
@@ -76,19 +74,14 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<GroupMetadataRe
       lastModified: item.lastModified
     }));
 
-    const response: GroupMetadataResponse = {
+    console.log(`Found ${groups.length} groups for user: ${cognitoId}`);
+
+    return {
+      success: true,
       groups,
-      pagination: {
-        count: groups.length
-      }
+      totalCount: groups.length,
+      message: `Found ${groups.length} groups for user: ${cognitoId}`
     };
-
-    // Add nextToken if there are more results
-    if (result.LastEvaluatedKey) {
-      response.pagination!.nextToken = encodeURIComponent(JSON.stringify(result.LastEvaluatedKey));
-    }
-
-    return response;
 
   } catch (error) {
     console.error('Error fetching group metadata:', error);

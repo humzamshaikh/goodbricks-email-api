@@ -10,6 +10,12 @@ const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 const TABLE_NAME = process.env.MAIN_TABLE_NAME || 'goodbricks-email-main';
 
+interface GetGroupAudienceRequest {
+  cognitoId: string;
+  groupId: string;
+  limit?: number;
+}
+
 interface GroupAudienceMember {
   userId: string;
   email: string;
@@ -23,44 +29,40 @@ interface GroupAudienceMember {
 }
 
 interface GroupAudienceResponse {
+  success: boolean;
   groupId: string;
   audience: GroupAudienceMember[];
-  pagination?: {
-    nextToken?: string;
-    count: number;
-  };
+  totalCount: number;
+  message?: string;
 }
 
 const handlerLogic = async (event: ApiGatewayEventLike): Promise<GroupAudienceResponse> => {
   try {
-    const userId = event.pathParameters?.userId || event.queryStringParameters?.userId;
-    const groupId = event.pathParameters?.groupId || event.queryStringParameters?.groupId;
+    // Parse request body to get cognitoId, groupId, and limit
+    const body = event.body ? JSON.parse(event.body) : {};
+    const cognitoId = body.cognitoId;
+    const groupId = body.groupId;
+    const limit = body.limit || 50;
     
-    if (!userId) {
-      throw new Error('userId is required');
+    if (!cognitoId) {
+      throw new Error('cognitoId is required in request body');
     }
 
     if (!groupId) {
-      throw new Error('groupId is required');
+      throw new Error('groupId is required in request body');
     }
 
-    const limit = event.queryStringParameters?.limit ? parseInt(event.queryStringParameters.limit) : 50;
-    const nextToken = event.queryStringParameters?.nextToken;
+    console.log(`Getting audience for group: ${groupId} (user: ${cognitoId})`);
 
     let queryParams: any = {
       TableName: TABLE_NAME,
       KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
       ExpressionAttributeValues: {
-        ':pk': `USER#${userId}#GROUP#${groupId}`,
-        ':sk': 'AUDIENCE#'
+        ':pk': `USER#${cognitoId}#GROUP#${groupId}`,
+        ':sk': 'AUDIENCE'
       },
       Limit: limit
     };
-
-    // Add pagination token if provided
-    if (nextToken) {
-      queryParams.ExclusiveStartKey = JSON.parse(decodeURIComponent(nextToken));
-    }
 
     const result = await docClient.send(new QueryCommand(queryParams));
 
@@ -76,20 +78,15 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<GroupAudienceRe
       lastModified: item.lastModified
     }));
 
-    const response: GroupAudienceResponse = {
+    console.log(`Found ${audience.length} audience members in group: ${groupId}`);
+
+    return {
+      success: true,
       groupId: groupId,
       audience,
-      pagination: {
-        count: audience.length
-      }
+      totalCount: audience.length,
+      message: `Found ${audience.length} audience members in group: ${groupId}`
     };
-
-    // Add nextToken if there are more results
-    if (result.LastEvaluatedKey) {
-      response.pagination!.nextToken = encodeURIComponent(JSON.stringify(result.LastEvaluatedKey));
-    }
-
-    return response;
 
   } catch (error) {
     console.error('Error fetching group audience:', error);

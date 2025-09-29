@@ -46,7 +46,7 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<AudienceCampaig
       KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
       ExpressionAttributeValues: {
         ':pk': `USER#${userId}`,
-        ':sk': 'AUDIENCE#'
+        ':sk': 'AUDIENCE'
       },
       Limit: limit
     }));

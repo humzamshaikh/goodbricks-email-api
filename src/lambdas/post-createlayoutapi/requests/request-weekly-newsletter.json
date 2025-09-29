@@ -1,0 +1,15 @@
+{
+  "body": {
+    "layoutId": "weekly-newsletter",
+    "version": "v1.0.0",
+    "name": "Weekly Newsletter",
+    "description": "Weekly community newsletter template",
+    "category": "newsletter",
+    "jsxCode": "import React from 'react';\n\nexport default function WeeklyNewsletter({ userName, weekNumber, articles, featuredStory, communitySpotlight }) {\n  return (\n    <div style={{ fontFamily: 'Arial, sans-serif', maxWidth: '600px', margin: '0 auto', padding: '20px' }}>\n      <h1 style={{ color: '#333', textAlign: 'center' }}>Weekly Community Newsletter</h1>\n      <p>Hello {{userName}},</p>\n      <p>Welcome to Week {{weekNumber}} of our community newsletter!</p>\n      \n      <div style={{ backgroundColor: '#f4f4f4', padding: '20px', margin: '20px 0', borderRadius: '8px' }}>\n        <h2 style={{ color: '#2c5aa0' }}>Featured Story</h2>\n        <p>{{featuredStory}}</p>\n      </div>\n      \n      <div style={{ margin: '20px 0' }}>\n        <h2 style={{ color: '#2c5aa0' }}>This Week's Articles</h2>\n        <p>{{articles}}</p>\n      </div>\n      \n      <div style={{ backgroundColor: '#e8f4fd', padding: '15px', margin: '20px 0', borderRadius: '5px' }}>\n        <h3 style={{ color: '#2c5aa0' }}>Community Spotlight</h3>\n        <p>{{communitySpotlight}}</p>\n      </div>\n      \n      <p style={{ textAlign: 'center', color: '#666', fontSize: '14px' }}>\n        Thank you for being part of our community!\n      </p>\n    </div>\n  );\n}"
+  },
+  "httpMethod": "POST",
+  "path": "/create-layout",
+  "headers": {
+    "Content-Type": "application/json"
+  }
+}

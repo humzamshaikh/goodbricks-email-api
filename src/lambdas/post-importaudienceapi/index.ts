@@ -23,6 +23,7 @@ interface ImportMember {
 
 interface ImportAudienceRequest {
   userId: string;
+  organization?: string; // Top-level organization for all members
   members: ImportMember[];
   mode?: 'upsert' | 'insert_only';
   appendTags?: boolean; // if true, merge tags; if false, replace when provided
@@ -65,6 +66,7 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<ImportAudienceR
   }
 
   const userId = body.userId;
+  const topLevelOrganization = body.organization; // Get top-level organization
   const nowIso = new Date().toISOString();
   const mode = body.mode ?? 'upsert';
   const appendTags = body.appendTags ?? true;
@@ -90,8 +92,12 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<ImportAudienceR
 
   // Process each member
   for (const [email, member] of dedupedByEmail.entries()) {
-    const tags = Array.isArray(member.tags) ? member.tags.filter(Boolean) : [];
-    const groupIds = new Set<string>([...tags, ...(member.groupIds || []), ...defaultGroups]);
+    // Use member tags if provided, otherwise default to empty array
+    const memberTags = Array.isArray(member.tags) ? member.tags.filter(Boolean) : [];
+    const groupIds = new Set<string>([...memberTags, ...(member.groupIds || []), ...defaultGroups]);
+
+    // Use top-level organization if provided, otherwise fall back to member organization
+    const organization = topLevelOrganization || member.organization || '';
 
     // Upsert the primary audience record
     const audienceItem = {
@@ -104,7 +110,7 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<ImportAudienceR
       lastName: member.lastName || '',
       tags: Array.from(groupIds),
       status: member.status || 'active',
-      organization: member.organization,
+      organization: organization,
       createdAt: nowIso,
       lastModified: nowIso
     };

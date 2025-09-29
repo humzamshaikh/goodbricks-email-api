@@ -1,0 +1,12 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-cair",
+    "groupId": "events"
+  },
+  "body": "{\"userId\":\"cognito-user-cair\",\"groupId\":\"events\",\"emails\":[\"eshaikh.omar@gmail.com\"]}",
+  "httpMethod": "POST",
+  "path": "/add-audience-to-group/{userId}/{groupId}",
+  "headers": {
+    "Content-Type": "application/json"
+  }
+}

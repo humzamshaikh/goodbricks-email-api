@@ -1,0 +1,10 @@
+{
+  "body": {
+    "layoutId": "complex-newsletter",
+    "version": "v1.0.0",
+    "name": "Complex Newsletter",
+    "description": "Complex newsletter with multiple variables",
+    "category": "newsletter",
+    "jsxCode": "import React from 'react';\n\nexport default function ComplexNewsletter({ \n  userName, \n  companyName, \n  eventDate, \n  eventTime, \n  eventLocation, \n  rsvpLink, \n  featuredArticle, \n  weeklyStats, \n  socialLinks \n}) {\n  return (\n    <div style={{ fontFamily: 'Arial, sans-serif', maxWidth: '800px', margin: '0 auto' }}>\n      <header style={{ backgroundColor: '#2c3e50', color: 'white', padding: '30px', textAlign: 'center' }}>\n        <h1>{companyName} Weekly Newsletter</h1>\n        <p>Hello {userName}, here's what's happening this week!</p>\n      </header>\n      \n      <main style={{ padding: '30px' }}>\n        <section style={{ marginBottom: '30px' }}>\n          <h2>Upcoming Event</h2>\n          <p><strong>Date:</strong> {eventDate}</p>\n          <p><strong>Time:</strong> {eventTime}</p>\n          <p><strong>Location:</strong> {eventLocation}</p>\n          <a href={rsvpLink} style={{ display: 'inline-block', backgroundColor: '#3498db', color: 'white', padding: '12px 24px', textDecoration: 'none', borderRadius: '5px' }}>\n            RSVP Here\n          </a>\n        </section>\n        \n        <section style={{ marginBottom: '30px' }}>\n          <h2>Featured Article</h2>\n          <p>{featuredArticle}</p>\n        </section>\n        \n        <section>\n          <h2>Weekly Stats</h2>\n          <p>{weeklyStats}</p>\n        </section>\n      </main>\n      \n      <footer style={{ backgroundColor: '#34495e', color: 'white', padding: '20px', textAlign: 'center' }}>\n        <p>Follow us: {socialLinks}</p>\n      </footer>\n    </div>\n  );\n};"
+  }
+}

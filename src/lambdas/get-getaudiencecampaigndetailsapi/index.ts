@@ -67,7 +67,7 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<AudienceCampaig
       KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
       ExpressionAttributeValues: {
         ':pk': `AUDIENCE_CAMPAIGNS#${userId}#${email}`,
-        ':sk': 'CAMPAIGN#'
+        ':sk': 'CAMPAIGN'
       },
       Limit: limit,
       ScanIndexForward: false // Most recent first

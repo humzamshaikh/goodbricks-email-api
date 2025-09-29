@@ -1,0 +1,15 @@
+{
+  "pathParameters": {
+    "campaignId": "cmp-test-hybrid",
+    "userId": "cognito-user-cair"
+  },
+  "body": "{\"campaignId\":\"cmp-test-hybrid\",\"userId\":\"cognito-user-cair\"}",
+  "httpMethod": "POST",
+  "path": "/send-campaign-v2/{campaignId}/{userId}",
+  "headers": {
+    "Content-Type": "application/json"
+  }
+}
+
+
+

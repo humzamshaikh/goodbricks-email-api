@@ -13,6 +13,11 @@ const TABLE_NAMES = {
   MAIN_TABLE: process.env.MAIN_TABLE_NAME || 'goodbricks-email-main'
 } as const;
 
+interface GetOrgCampaignsByStatusRequest {
+  cognitoId: string;
+  status: string;
+}
+
 interface CampaignItem {
   userId: string;
   campaignId: string;
@@ -42,25 +47,26 @@ interface CampaignItem {
 }
 
 interface OrgStatusCampaignsResponse {
+  success: boolean;
   campaigns: CampaignItem[];
   status: string;
-  pagination?: {
-    nextToken?: string;
-    count: number;
-  };
+  totalCount: number;
+  message?: string;
 }
 
 const handlerLogic = async (event: ApiGatewayEventLike): Promise<OrgStatusCampaignsResponse> => {
   try {
-    const userId = event.pathParameters?.userId || event.queryStringParameters?.userId;
-    const status = event.pathParameters?.status || event.queryStringParameters?.status;
+    // Parse request body to get cognitoId and status
+    const body = event.body ? JSON.parse(event.body) : {};
+    const cognitoId = body.cognitoId;
+    const status = body.status;
     
-    if (!userId) {
-      throw new HttpError(400, 'userId is required');
+    if (!cognitoId) {
+      throw new HttpError(400, 'cognitoId is required in request body');
     }
     
     if (!status) {
-      throw new HttpError(400, 'status is required');
+      throw new HttpError(400, 'status is required in request body');
     }
 
     // Validate status
@@ -69,29 +75,18 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<OrgStatusCampai
       throw new HttpError(400, `Invalid status. Must be one of: ${validStatuses.join(', ')}`);
     }
 
-    // Parse query parameters
-    const limit = parseInt(event.queryStringParameters?.limit || '20');
-    const nextToken = event.queryStringParameters?.nextToken;
+    console.log(`Getting ${status} campaigns for user: ${cognitoId}`);
 
-    // Build query parameters
+    // Build query parameters using new PK/SK pattern
     let queryParams: any = {
       TableName: TABLE_NAMES.MAIN_TABLE,
-      KeyConditionExpression: 'PK = :pk',
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
       ExpressionAttributeValues: {
-        ':pk': `ORG_STATUS_CAMPAIGNS#${userId}#${status}`
+        ':pk': `USER#${cognitoId}`,
+        ':sk': `STATUS#${status}#CAMPAIGN`
       },
-      Limit: limit,
       ScanIndexForward: false // Sort by SK descending (newest first)
     };
-
-    // Add pagination token if provided
-    if (nextToken) {
-      try {
-        queryParams.ExclusiveStartKey = JSON.parse(decodeURIComponent(nextToken));
-      } catch (error) {
-        throw new HttpError(400, 'Invalid nextToken format');
-      }
-    }
 
     const result = await docClient.send(new QueryCommand(queryParams));
 
@@ -113,21 +108,15 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<OrgStatusCampai
       metadata: item.metadata || {}
     }));
 
-    // Build pagination response
-    const response: OrgStatusCampaignsResponse = {
+    console.log(`Found ${campaigns.length} ${status} campaigns for user: ${cognitoId}`);
+
+    return {
+      success: true,
       campaigns,
       status,
-      pagination: {
-        count: campaigns.length
-      }
+      totalCount: campaigns.length,
+      message: `Found ${campaigns.length} ${status} campaigns for user: ${cognitoId}`
     };
-
-    // Add nextToken if there are more results
-    if (result.LastEvaluatedKey) {
-      response.pagination!.nextToken = encodeURIComponent(JSON.stringify(result.LastEvaluatedKey));
-    }
-
-    return response;
 
   } catch (error) {
     console.error('Error getting organization campaigns by status:', error);

@@ -15,18 +15,95 @@ const sesClient = new SESClient({
 
 const TABLE_NAME = process.env.MAIN_TABLE_NAME || 'goodbricks-email-main';
 
+// Helper function to chunk array into smaller arrays
+function chunkArray<T>(array: T[], chunkSize: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < array.length; i += chunkSize) {
+    chunks.push(array.slice(i, i + chunkSize));
+  }
+  return chunks;
+}
+
+// Helper function to get recipient details efficiently
+async function getRecipientDetails(userId: string, emails: string[]): Promise<any[]> {
+  const recipients = [];
+  
+  // Process in batches to avoid overwhelming DynamoDB
+  const batchSize = 25;
+  const emailBatches = chunkArray(emails, batchSize);
+  
+  for (const emailBatch of emailBatches) {
+    const batchPromises = emailBatch.map(async (email) => {
+      try {
+        const result = await docClient.send(new GetCommand({
+          TableName: TABLE_NAME,
+          Key: {
+            PK: `USER#${userId}`,
+            SK: `AUDIENCE#${email}`
+          }
+        }));
+        
+        if (result.Item) {
+          return {
+            email: result.Item.email || email,
+            firstName: result.Item.firstName || '',
+            lastName: result.Item.lastName || '',
+            organization: result.Item.organization || ''
+          };
+        } else {
+          return {
+            email,
+            firstName: '',
+            lastName: '',
+            organization: ''
+          };
+        }
+      } catch (error) {
+        console.error(`Error getting details for ${email}:`, error);
+        return {
+          email,
+          firstName: '',
+          lastName: '',
+          organization: ''
+        };
+      }
+    });
+    
+    const batchResults = await Promise.all(batchPromises);
+    recipients.push(...batchResults);
+  }
+  
+  return recipients;
+}
+
+// Helper function to create personalized HTML
+function createPersonalizedHtml(template: string, recipient: any): string {
+  return template
+    .replace(/\{\{firstName\}\}/g, recipient.firstName || '')
+    .replace(/\{\{lastName\}\}/g, recipient.lastName || '')
+    .replace(/\{\{email\}\}/g, recipient.email || '')
+    .replace(/\{\{organization\}\}/g, recipient.organization || '');
+}
+
 interface SendCampaignV2Response {
   success: boolean;
   message: string;
-  campaignId?: string;
-  emailsSent?: number;
-  recipients?: string[];
+  campaignId: string;
+  emailsSent: number;
+  recipients: string[];
   errors?: string[];
+  batchesProcessed?: number;
+  processingTime?: number;
+  averageTimePerEmail?: number;
+  sendingMethod?: string;
 }
 
 const handlerLogic = async (event: ApiGatewayEventLike): Promise<SendCampaignV2Response> => {
+  const startTime = Date.now();
+  
   try {
-    console.log('Send Campaign V2 - Starting...');
+    console.log('Send Campaign V2 Optimized - Starting...');
+    console.log('Event:', JSON.stringify(event, null, 2));
     
     const userId = event.pathParameters?.userId;
     const campaignId = event.pathParameters?.campaignId;
@@ -90,7 +167,7 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<SendCampaignV2R
             .filter(email => email);
           
           recipients.push(...groupEmails);
-          console.log(`Group ${groupId} has ${groupEmails.length} members:`, groupEmails);
+          console.log(`Group ${groupId} has ${groupEmails.length} members`);
         }
       }
     } else if (campaign.recipients?.type === 'all_audience') {
@@ -108,7 +185,7 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<SendCampaignV2R
         recipients = audienceResult.Items
           .map(item => item.email)
           .filter(email => email);
-        console.log(`Found ${recipients.length} audience members:`, recipients);
+        console.log(`Found ${recipients.length} audience members`);
       }
     }
 
@@ -116,7 +193,9 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<SendCampaignV2R
       throw new HttpError(400, 'No recipients found for this campaign');
     }
 
-    // Step 4: Validate email content
+    console.log(`Found ${recipients.length} total recipients`);
+
+    // Step 4: Validate required metadata
     if (!campaign.metadata?.subject) {
       throw new HttpError(400, 'Campaign metadata must include subject');
     }
@@ -124,49 +203,146 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<SendCampaignV2R
       throw new HttpError(400, 'Campaign metadata must include fromEmail');
     }
 
-    console.log('Step 3: Sending emails...');
-    console.log(`Sending to ${recipients.length} recipients:`, recipients);
+    // Step 5: Get recipient details for personalization
+    console.log('Step 3: Getting recipient details...');
+    let recipientDetails = [];
+    try {
+      recipientDetails = await getRecipientDetails(userId, recipients);
+      console.log(`Retrieved details for ${recipientDetails.length} recipients`);
+    } catch (error) {
+      console.error('Error getting recipient details:', error);
+      throw new HttpError(500, `Failed to get recipient details: ${error instanceof Error ? error.message : String(error)}`);
+    }
 
-    // Step 5: Send emails
+    // Step 6: Get email template from campaign or use default
+    console.log('Step 4: Preparing email template...');
+    let emailTemplate = '';
+    
+    if (campaign.templateId) {
+      // Try to get template from S3 or use a default
+      emailTemplate = `<!DOCTYPE html>
+<html>
+<head><title>${campaign.metadata.subject}</title></head>
+<body>
+  <h1>Hello {{firstName}} {{lastName}}!</h1>
+  <p>${campaign.description || 'Thank you for your interest.'}</p>
+  <p>Best regards,<br>${campaign.metadata.fromName || 'The Team'}</p>
+</body>
+</html>`;
+    } else {
+      // Use a simple default template
+      emailTemplate = `<!DOCTYPE html>
+<html>
+<head><title>${campaign.metadata.subject}</title></head>
+<body>
+  <h1>Hello {{firstName}} {{lastName}}!</h1>
+  <p>${campaign.description || 'Thank you for your interest.'}</p>
+  <p>Best regards,<br>${campaign.metadata.fromName || 'The Team'}</p>
+</body>
+</html>`;
+    }
+
+    // Step 7: Send emails using optimized batching
+    console.log('Step 5: Sending emails...');
     const emailResults = [];
     const errors = [];
 
-    for (const recipient of recipients) {
-      try {
-        console.log(`Sending email to: ${recipient}`);
-        
-        const emailParams = {
-          Source: campaign.metadata.fromName 
-            ? `${campaign.metadata.fromName} <${campaign.metadata.fromEmail}>` 
-            : campaign.metadata.fromEmail,
-          Destination: {
-            ToAddresses: [recipient]
-          },
-          Message: {
-            Subject: { 
-              Data: campaign.metadata.subject, 
-              Charset: 'UTF-8' 
-            },
-            Body: {
-              Text: { 
-                Data: campaign.description || campaign.metadata.subject, 
-                Charset: 'UTF-8' 
-              }
-            }
-          }
-        };
+    // Determine batch size based on recipient count
+    const batchSize = recipients.length > 100 ? 50 : 10;
+    const batches = chunkArray(recipientDetails, batchSize);
+    console.log(`Processing ${batches.length} batches of up to ${batchSize} recipients each`);
 
-        const command = new SendEmailCommand(emailParams);
-        const result = await sesClient.send(command);
+    let totalSuccessful = 0;
+    let totalFailed = 0;
+
+    for (let i = 0; i < batches.length; i++) {
+      const batch = batches[i];
+      
+      try {
+        console.log(`Processing batch ${i + 1}/${batches.length} with ${batch.length} recipients`);
         
-        console.log(`Email sent successfully to ${recipient}, MessageId: ${result.MessageId}`);
-        emailResults.push({ success: true, recipient, messageId: result.MessageId });
+        // Process batch in parallel
+        const batchPromises = batch.map(async (recipient) => {
+          try {
+            const personalizedHtml = createPersonalizedHtml(emailTemplate, recipient);
+            
+            const emailParams = {
+              Source: campaign.metadata.fromName 
+                ? `${campaign.metadata.fromName} <${campaign.metadata.fromEmail}>` 
+                : campaign.metadata.fromEmail,
+              Destination: {
+                ToAddresses: [recipient.email]
+              },
+              Message: {
+                Subject: {
+                  Data: campaign.metadata.subject,
+                  Charset: 'UTF-8'
+                },
+                Body: {
+                  Html: {
+                    Data: personalizedHtml,
+                    Charset: 'UTF-8'
+                  },
+                  Text: {
+                    Data: `Hello ${recipient.firstName} ${recipient.lastName}! ${campaign.description || 'Thank you for your interest.'}`,
+                    Charset: 'UTF-8'
+                  }
+                }
+              }
+            };
+
+            const command = new SendEmailCommand(emailParams);
+            const result = await sesClient.send(command);
+            
+            return {
+              success: true,
+              recipient: recipient.email,
+              messageId: result.MessageId,
+              batchId: i + 1
+            };
+          } catch (error) {
+            console.error(`Failed to send email to ${recipient.email}:`, error);
+            return {
+              success: false,
+              recipient: recipient.email,
+              error: error instanceof Error ? error.message : String(error),
+              batchId: i + 1
+            };
+          }
+        });
         
-      } catch (error) {
-        console.error(`Failed to send email to ${recipient}:`, error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        errors.push(`${recipient}: ${errorMessage}`);
-        emailResults.push({ success: false, recipient, error: errorMessage });
+        const batchResults = await Promise.all(batchPromises);
+        emailResults.push(...batchResults);
+        
+        const batchSuccessful = batchResults.filter(r => r.success).length;
+        const batchFailed = batchResults.filter(r => !r.success).length;
+        
+        totalSuccessful += batchSuccessful;
+        totalFailed += batchFailed;
+        
+        console.log(`Batch ${i + 1} completed: ${batchSuccessful} successful, ${batchFailed} failed`);
+        
+        // Add a small delay between batches to avoid rate limiting
+        if (i < batches.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+      } catch (batchError) {
+        console.error(`Failed to process batch ${i + 1}:`, batchError);
+        const errorMessage = batchError instanceof Error ? batchError.message : String(batchError);
+        errors.push(`Batch ${i + 1}: ${errorMessage}`);
+        
+        // Mark all recipients in this batch as failed
+        batch.forEach(recipient => {
+          emailResults.push({
+            success: false,
+            recipient: recipient.email,
+            error: errorMessage,
+            batchId: i + 1
+          });
+        });
+        
+        totalFailed += batch.length;
       }
     }
 
@@ -174,10 +350,11 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<SendCampaignV2R
     const failed = emailResults.filter(r => !r.success);
 
     console.log(`Email sending complete. Successful: ${successful.length}, Failed: ${failed.length}`);
+    console.log(`Processed ${batches.length} batches total`);
 
-    // Step 6: Update campaign status if any emails were sent successfully
+    // Step 8: Update campaign status if any emails were sent successfully
     if (successful.length > 0) {
-      console.log('Step 4: Updating campaign status...');
+      console.log('Step 6: Updating campaign status...');
       const nowIso = new Date().toISOString();
 
       // Update main campaign record
@@ -187,113 +364,64 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<SendCampaignV2R
           PK: `USER#${userId}`,
           SK: `CAMPAIGN#${campaignId}`
         },
-        UpdateExpression: 'SET #status = :status, #sentAt = :sentAt, #lastModified = :lastModified',
+        UpdateExpression: 'SET #status = :status, lastModified = :lastModified, sentAt = :sentAt, emailsSent = :emailsSent',
         ExpressionAttributeNames: {
-          '#status': 'status',
-          '#sentAt': 'sentAt',
-          '#lastModified': 'lastModified'
+          '#status': 'status'
         },
         ExpressionAttributeValues: {
           ':status': 'sent',
+          ':lastModified': nowIso,
           ':sentAt': nowIso,
-          ':lastModified': nowIso
+          ':emailsSent': successful.length
         }
       }));
 
-      // Update index records
-      const indexUpdates = [
-        // Organization campaigns index
-        {
-          PK: `ORG_CAMPAIGNS#${userId}`,
-          SK: `CAMPAIGN#${campaignId}`,
-          ...campaign,
-          status: 'sent',
+      // Create campaign recipients record for tracking
+      await docClient.send(new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          PK: `CAMPAIGN_RECIPIENTS#${campaignId}`,
+          SK: `SENT#${nowIso}`,
+          campaignId,
+          userId,
+          totalRecipients: recipients.length,
+          successfulEmails: successful.length,
+          failedEmails: failed.length,
+          batchesProcessed: batches.length,
           sentAt: nowIso,
-          lastModified: nowIso
-        },
-        // Organization status campaigns index
-        {
-          PK: `ORG_STATUS_CAMPAIGNS#${userId}#sent`,
-          SK: `CAMPAIGN#${campaignId}`,
-          ...campaign,
+          campaignName: campaign.name,
+          description: campaign.description,
+          subject: campaign.metadata?.subject,
+          fromEmail: campaign.metadata?.fromEmail,
+          fromName: campaign.metadata?.fromName,
           status: 'sent',
-          sentAt: nowIso,
-          lastModified: nowIso
+          messageId: `campaign-${campaignId}-${Date.now()}`
         }
-      ];
-
-      // Add group-specific updates if applicable
-      if (campaign.recipients?.type === 'groups' && campaign.recipients.groupIds) {
-        for (const groupId of campaign.recipients.groupIds) {
-          indexUpdates.push({
-            PK: `GROUP_CAMPAIGNS#${userId}#${groupId}`,
-            SK: `CAMPAIGN#${campaignId}`,
-            ...campaign,
-            status: 'sent',
-            sentAt: nowIso,
-            lastModified: nowIso
-          });
-        }
-      }
-
-      // Update all index records
-      for (const indexRecord of indexUpdates) {
-        await docClient.send(new PutCommand({
-          TableName: TABLE_NAME,
-          Item: indexRecord
-        }));
-      }
-
-      // Create recipient tracking records
-      for (const success of successful) {
-        // Campaign recipients record
-        await docClient.send(new PutCommand({
-          TableName: TABLE_NAME,
-          Item: {
-            PK: `CAMPAIGN_RECIPIENTS#${campaignId}`,
-            SK: `SENT#${nowIso}`,
-            campaignId,
-            recipient: success.recipient,
-            messageId: success.messageId,
-            sentAt: nowIso
-          }
-        }));
-
-        // Audience campaign record
-        await docClient.send(new PutCommand({
-          TableName: TABLE_NAME,
-          Item: {
-            PK: `AUDIENCE_CAMPAIGNS#${userId}#${success.recipient}`,
-            SK: `CAMPAIGN#${campaignId}`,
-            userId,
-            email: success.recipient,
-            campaignId,
-            campaignName: campaign.name,
-            description: campaign.description,
-            subject: campaign.metadata?.subject,
-            fromEmail: campaign.metadata?.fromEmail,
-            fromName: campaign.metadata?.fromName,
-            status: 'sent',
-            sentAt: nowIso,
-            messageId: success.messageId
-          }
-        }));
-      }
+      }));
 
       console.log('Campaign status updated to sent');
     }
 
+    const endTime = Date.now();
+    const processingTime = endTime - startTime;
+    const averageTimePerEmail = processingTime / recipients.length;
+
     return {
       success: true,
-      message: `Campaign sent successfully. ${successful.length} emails sent, ${failed.length} failed.`,
+      message: `Campaign sent successfully using optimized individual emails. ${successful.length} emails sent, ${failed.length} failed.`,
       campaignId,
       emailsSent: successful.length,
       recipients: successful.map(r => r.recipient),
-      errors: errors.length > 0 ? errors : undefined
+      errors: errors.length > 0 ? errors : undefined,
+      batchesProcessed: batches.length,
+      processingTime,
+      averageTimePerEmail: Math.round(averageTimePerEmail * 100) / 100,
+      sendingMethod: 'optimized-individual'
     };
 
   } catch (error) {
-    console.error('Error in Send Campaign V2:', error);
+    console.error('Error in Send Campaign V2 Optimized:', error);
+    console.error('Error details:', JSON.stringify(error, null, 2));
     if (error instanceof HttpError) {
       throw error;
     }

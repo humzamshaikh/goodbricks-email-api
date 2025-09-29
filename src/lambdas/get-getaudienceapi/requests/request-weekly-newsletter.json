@@ -1,9 +1,0 @@
-{
-  "pathParameters": {
-    "userId": "cognito-user-123"
-  },
-  "queryStringParameters": {
-    "tag": "weekly-newsletter"
-  }
-}
-

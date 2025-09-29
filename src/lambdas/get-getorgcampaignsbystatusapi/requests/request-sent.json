@@ -1,17 +1,3 @@
 {
-  "pathParameters": {
-    "userId": "cognito-user-icsd",
-    "status": "sent"
-  },
-  "queryStringParameters": {
-    "limit": "10"
-  },
-  "headers": {
-    "Content-Type": "application/json"
-  },
-  "body": null,
-  "isBase64Encoded": false,
-  "httpMethod": "GET",
-  "path": "/org-campaigns/{userId}/status/{status}",
-  "resource": "/org-campaigns/{userId}/status/{status}"
+  "body": "{\"cognitoId\": \"cognito-user-cair\", \"status\": \"sent\"}"
 }

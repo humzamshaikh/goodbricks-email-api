@@ -1,0 +1,11 @@
+{
+  "pathParameters": {
+    "userId": "cognito-user-cair"
+  },
+  "body": "{\"userId\":\"cognito-user-cair\",\"name\":\"18th Annual Gala Announcement\",\"description\":\"Invitation to CAIR's 18th Annual Gala event\",\"audienceSelection\":{\"type\":\"tag\",\"values\":[\"volunteers\"]},\"recipients\":{\"type\":\"groups\",\"groupIds\":[\"volunteers\"]},\"metadata\":{\"subject\":\"You're Invited to CAIR's 18th Annual Gala\",\"fromEmail\":\"humza.shaikh22341@gmail.com\",\"fromName\":\"CAIR Team\"},\"templateId\":\"event-gala-announcement\",\"templateVersion\":\"latest\"}",
+  "httpMethod": "POST",
+  "path": "/create-campaign/{userId}",
+  "headers": {
+    "Content-Type": "application/json"
+  }
+}

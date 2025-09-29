@@ -1,0 +1,10 @@
+{
+  "body": {
+    "layoutId": "simple-test",
+    "version": "v1.0.0",
+    "name": "Simple Test",
+    "description": "Simple test layout",
+    "category": "test",
+    "jsxCode": "import React from 'react';\n\nexport default function SimpleTest({ message = 'Hello World' }) {\n  return (\n    <div style={{ padding: '20px', backgroundColor: '#f0f0f0' }}>\n      <h1>{message}</h1>\n      <p>This is a simple test component.</p>\n    </div>\n  );\n};"
+  }
+}

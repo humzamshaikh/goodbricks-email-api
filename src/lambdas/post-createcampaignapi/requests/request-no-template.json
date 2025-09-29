@@ -1,0 +1,16 @@
+{
+  "body": {
+    "userId": "cognito-user-mcc",
+    "name": "Simple Campaign No Template",
+    "description": "Campaign without template",
+    "audienceSelection": {
+      "type": "tag",
+      "values": ["basic-members"]
+    },
+    "recipients": {
+      "type": "groups",
+      "groupIds": ["basic-members"]
+    },
+    "status": "draft"
+  }
+}

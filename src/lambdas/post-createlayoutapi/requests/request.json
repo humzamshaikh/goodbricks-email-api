@@ -1,0 +1,10 @@
+{
+  "body": {
+    "layoutId": "welcome-email",
+    "version": "v1.0.0",
+    "name": "Welcome Email Template",
+    "description": "A beautiful welcome email for new users",
+    "category": "welcome",
+    "jsxCode": "import React from 'react';\n\nexport default function WelcomeEmail({ \n  name = 'Friend', \n  companyName = 'GoodBricks',\n  loginUrl = 'https://app.goodbricks.org/login'\n}) {\n  return (\n    <html>\n      <head>\n        <meta charSet=\"utf-8\" />\n        <title>Welcome to {companyName}!</title>\n        <style>{`\n          body { font-family: Arial, sans-serif; padding: 20px; }\n          .header { background: #667eea; color: white; padding: 20px; text-align: center; }\n          .button { background: #667eea; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; }\n        `}</style>\n      </head>\n      <body>\n        <div className=\"header\">\n          <h1>Welcome to {companyName}!</h1>\n        </div>\n        <div style={{ padding: '20px' }}>\n          <h2>Hello {name}!</h2>\n          <p>Thank you for joining {companyName}.</p>\n          <a href={loginUrl} className=\"button\">Get Started</a>\n        </div>\n      </body>\n    </html>\n  );\n}"
+  }
+}

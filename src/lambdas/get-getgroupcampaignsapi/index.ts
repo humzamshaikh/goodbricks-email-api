@@ -13,6 +13,13 @@ const TABLE_NAMES = {
   MAIN_TABLE: process.env.MAIN_TABLE_NAME || 'goodbricks-email-main'
 } as const;
 
+interface GetGroupCampaignsRequest {
+  cognitoId: string;
+  groupId: string;
+  limit?: number;
+  status?: string;
+}
+
 interface CampaignItem {
   userId: string;
   campaignId: string;
@@ -42,51 +49,43 @@ interface CampaignItem {
 }
 
 interface GroupCampaignsResponse {
+  success: boolean;
   campaigns: CampaignItem[];
   groupId: string;
-  pagination?: {
-    nextToken?: string;
-    count: number;
-  };
+  totalCount: number;
+  message?: string;
 }
 
 const handlerLogic = async (event: ApiGatewayEventLike): Promise<GroupCampaignsResponse> => {
   try {
-    const userId = event.pathParameters?.userId || event.queryStringParameters?.userId;
-    const groupId = event.pathParameters?.groupId || event.queryStringParameters?.groupId;
+    // Parse request body to get cognitoId, groupId, limit, and status
+    const body = event.body ? JSON.parse(event.body) : {};
+    const cognitoId = body.cognitoId;
+    const groupId = body.groupId;
+    const limit = body.limit || 20;
+    const status = body.status;
     
-    if (!userId) {
-      throw new HttpError(400, 'userId is required');
+    if (!cognitoId) {
+      throw new HttpError(400, 'cognitoId is required in request body');
     }
     
     if (!groupId) {
-      throw new HttpError(400, 'groupId is required');
+      throw new HttpError(400, 'groupId is required in request body');
     }
 
-    // Parse query parameters
-    const limit = parseInt(event.queryStringParameters?.limit || '20');
-    const nextToken = event.queryStringParameters?.nextToken;
-    const status = event.queryStringParameters?.status;
+    console.log(`Getting campaigns for group: ${groupId} (user: ${cognitoId})`);
 
-    // Build query parameters
+    // Build query parameters using new PK/SK pattern
     let queryParams: any = {
       TableName: TABLE_NAMES.MAIN_TABLE,
-      KeyConditionExpression: 'PK = :pk',
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
       ExpressionAttributeValues: {
-        ':pk': `GROUP_CAMPAIGNS#${userId}#${groupId}`
+        ':pk': `USER#${cognitoId}#GROUP#${groupId}`,
+        ':sk': 'CAMPAIGN'
       },
       Limit: limit,
       ScanIndexForward: false // Sort by SK descending (newest first)
     };
-
-    // Add pagination token if provided
-    if (nextToken) {
-      try {
-        queryParams.ExclusiveStartKey = JSON.parse(decodeURIComponent(nextToken));
-      } catch (error) {
-        throw new HttpError(400, 'Invalid nextToken format');
-      }
-    }
 
     // Add status filter if provided
     if (status) {
@@ -117,21 +116,15 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<GroupCampaignsR
       metadata: item.metadata || {}
     }));
 
-    // Build pagination response
-    const response: GroupCampaignsResponse = {
+    console.log(`Found ${campaigns.length} campaigns for group: ${groupId}`);
+
+    return {
+      success: true,
       campaigns,
       groupId,
-      pagination: {
-        count: campaigns.length
-      }
+      totalCount: campaigns.length,
+      message: `Found ${campaigns.length} campaigns for group: ${groupId}`
     };
-
-    // Add nextToken if there are more results
-    if (result.LastEvaluatedKey) {
-      response.pagination!.nextToken = encodeURIComponent(JSON.stringify(result.LastEvaluatedKey));
-    }
-
-    return response;
 
   } catch (error) {
     console.error('Error getting group campaigns:', error);
