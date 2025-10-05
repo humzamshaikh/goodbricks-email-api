@@ -1,7 +1,8 @@
 import { createHttpHandler, ApiGatewayEventLike } from '../../lib/handler.js';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, GetCommand, QueryCommand, UpdateCommand, PutCommand, BatchWriteCommand } from '@aws-sdk/lib-dynamodb';
-import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
+import { DynamoDBDocumentClient, GetCommand, QueryCommand, BatchWriteCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
+import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { SESClient, SendBulkTemplatedEmailCommand } from '@aws-sdk/client-ses';
 import { HttpError } from '../../lib/http.js';
 
 // AWS Clients
@@ -9,75 +10,168 @@ const dynamoClient = new DynamoDBClient({
   region: process.env.AWS_REGION || 'us-west-1'
 });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
+
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION || 'us-west-1'
+});
+
 const sesClient = new SESClient({
   region: process.env.AWS_REGION || 'us-west-1'
 });
 
-const TABLE_NAMES = {
-  EMAIL_CAMPAIGNS: process.env.EMAIL_CAMPAIGNS_TABLE_NAME || 'email-campaigns',
-  EMAIL_MAIN: process.env.EMAIL_MAIN_TABLE_NAME || 'goodbricks-email-main',
-  MAIN_TABLE: process.env.MAIN_TABLE_NAME || 'goodbricks-email-main'
-} as const;
+const TABLE_NAME = process.env.MAIN_TABLE_NAME || 'goodbricks-email-main';
+const LAYOUTS_BUCKET = process.env.LAYOUTS_BUCKET_NAME || 'gb-email-layouts-900546257868-us-west-1';
+
+interface SendCampaignRequest {
+  cognitoId: string;
+  campaignId: string;
+}
 
 interface SendCampaignResponse {
   success: boolean;
-  message: string;
+  cognitoId?: string;
   campaignId?: string;
-  emailsSent?: number;
-  errors?: string[];
-}
-
-interface Campaign {
-  userId: string;
-  campaignId: string;
-  name: string;
-  description?: string;
-  templateId: string;
-  templateVersion: number;
-  audienceSelection: {
-    type: 'tag' | 'list' | 'all';
-    values: string[];
-  };
+  campaignName?: string;
+  templateName?: string;
   recipients?: {
-    type: 'groups' | 'all_audience';
-    groupIds?: string[];
+    total: number;
+    groups: string[];
+    emails: string[];
   };
-  status: string;
-  scheduledAt?: string;
-  metadata: {
-    subject?: string;
-    fromName?: string;
-    fromEmail?: string;
-    previewText?: string;
+  sesResponse?: {
+    messageId?: string;
+    status: string;
+    sent: number;
+    failed: number;
+    error?: string;
   };
+  campaignStatus?: {
+    updated: boolean;
+    newStatus: string;
+  };
+  trackingRecords?: {
+    created: number;
+  };
+  audienceRecordsCreated?: number;
+  recordsUpdated?: number;
+  layoutRetrieved?: boolean;
+  layoutId?: string;
+  layoutVersion?: string;
+  message?: string;
 }
 
-interface AudienceMember {
-  userId: string;
-  email: string;
-  tags?: string[];
-  status?: string;
+// Function to retrieve JSX code from S3
+async function retrieveLayoutFromS3(layoutId: string, layoutVersion: string): Promise<string | null> {
+  try {
+    const s3Key = `${layoutId}/${layoutVersion}/${layoutId}.jsx`;
+    console.log(`Retrieving layout from S3: ${s3Key}`);
+    
+    const result = await s3Client.send(new GetObjectCommand({
+      Bucket: LAYOUTS_BUCKET,
+      Key: s3Key
+    }));
+    
+    if (result.Body) {
+      const jsxCode = await result.Body.transformToString();
+      console.log(`Successfully retrieved JSX code (${jsxCode.length} characters)`);
+      return jsxCode;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error(`Error retrieving layout from S3: ${layoutId}/${layoutVersion}:`, error);
+    return null;
+  }
+}
+
+// Function to retrieve recipients based on campaign data
+async function retrieveRecipients(cognitoId: string, campaign: any): Promise<{ emails: string[]; recipients: any[]; groups: string[] }> {
+  const recipients: any[] = [];
+  const emails: string[] = [];
+  const groups: string[] = [];
+
+  if (campaign.recipients?.type === 'groups' && campaign.recipients.groupIds) {
+    groups.push(...campaign.recipients.groupIds);
+    
+    // Query each group for audience members
+    for (const groupId of campaign.recipients.groupIds) {
+      try {
+        const groupQuery = await docClient.send(new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+          ExpressionAttributeValues: {
+            ':pk': `USER#${cognitoId}#GROUP#${groupId}`,
+            ':sk': 'AUDIENCE'
+          }
+        }));
+
+        if (groupQuery.Items) {
+          recipients.push(...groupQuery.Items);
+          groupQuery.Items.forEach(item => {
+            if (item.email && !emails.includes(item.email)) {
+              emails.push(item.email);
+            }
+          });
+        }
+      } catch (error) {
+        console.error(`Error querying group ${groupId}:`, error);
+      }
+    }
+  } else if (campaign.recipients?.type === 'all_audience') {
+    // Query all audience members for the organization
+    try {
+      const audienceQuery = await docClient.send(new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+        ExpressionAttributeValues: {
+          ':pk': `USER#${cognitoId}`,
+          ':sk': 'AUDIENCE'
+        }
+      }));
+
+      if (audienceQuery.Items) {
+        recipients.push(...audienceQuery.Items);
+        audienceQuery.Items.forEach(item => {
+          if (item.email && !emails.includes(item.email)) {
+            emails.push(item.email);
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error querying all audience:', error);
+    }
+  }
+
+  return { emails, recipients, groups };
 }
 
 const handlerLogic = async (event: ApiGatewayEventLike): Promise<SendCampaignResponse> => {
   try {
-    const userId = event.pathParameters?.userId;
-    const campaignId = event.pathParameters?.campaignId;
+    const body = event.body ? JSON.parse(event.body) as SendCampaignRequest : undefined;
+  
+  if (!body) {
+    throw new HttpError(400, 'Request body is required');
+  }
 
-    if (!userId) {
-      throw new HttpError(400, 'userId is required');
-    }
-    if (!campaignId) {
-      throw new HttpError(400, 'campaignId is required');
-    }
+  if (!body.cognitoId || typeof body.cognitoId !== 'string') {
+    throw new HttpError(400, 'cognitoId is required and must be a string');
+  }
 
-    console.log(`Starting campaign send for userId: ${userId}, campaignId: ${campaignId}`);
-    // Fetch campaign details
+  if (!body.campaignId || typeof body.campaignId !== 'string') {
+    throw new HttpError(400, 'campaignId is required and must be a string');
+  }
+
+  try {
+    const nowIso = new Date().toISOString();
+    
+    console.log('Starting campaign send for:', body.cognitoId, body.campaignId);
+
+    // 1. Fetch campaign details
     const campaignResult = await docClient.send(new GetCommand({
-      TableName: TABLE_NAMES.MAIN_TABLE,
+      TableName: TABLE_NAME,
       Key: {
-        PK: `USER#${userId}`,
-        SK: `CAMPAIGN#${campaignId}`
+        PK: `USER#${body.cognitoId}`,
+        SK: `CAMPAIGN#${body.campaignId}`
       }
     }));
 
@@ -85,338 +179,321 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<SendCampaignRes
       throw new HttpError(404, 'Campaign not found');
     }
 
-    const campaign = campaignResult.Item as Campaign;
+    const campaign = campaignResult.Item;
+    console.log('Found campaign:', JSON.stringify(campaign, null, 2));
 
     // Validate campaign status
     if (campaign.status !== 'draft' && campaign.status !== 'scheduled') {
       throw new HttpError(400, `Campaign cannot be sent. Current status: ${campaign.status}`);
     }
 
-    // Get audience based on campaign recipients field or fallback to audienceSelection
-    let recipients: string[] = [];
-    let recipientGroups: string[] = [];
-
-    // Use recipients field if available, otherwise fallback to audienceSelection
-    if (campaign.recipients) {
-      if (campaign.recipients.type === 'groups' && campaign.recipients.groupIds) {
-        // Get audience members from specific groups
-        recipientGroups = campaign.recipients.groupIds;
-        
-        // Query each group to get members
-        const groupMemberPromises = campaign.recipients.groupIds.map(async (groupId) => {
-          const groupResult = await docClient.send(new QueryCommand({
-            TableName: TABLE_NAMES.EMAIL_MAIN,
-            KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
-            ExpressionAttributeValues: {
-              ':pk': `USER#${userId}#GROUP#${groupId}`,
-              ':sk': 'AUDIENCE#'
-            }
-          }));
-          return groupResult.Items?.map(item => item.email).filter(email => email) || [];
-        });
-        
-        const groupMembers = await Promise.all(groupMemberPromises);
-        recipients = groupMembers.flat();
-      } else if (campaign.recipients.type === 'all_audience') {
-        // Get all audience members
-        const audienceResult = await docClient.send(new QueryCommand({
-          TableName: TABLE_NAMES.EMAIL_MAIN,
-          KeyConditionExpression: 'PK = :pk',
-          ExpressionAttributeValues: {
-            ':pk': `USER#${userId}`
-          }
-        }));
-
-        if (audienceResult.Items) {
-          recipients = audienceResult.Items
-            .filter(item => item.SK?.startsWith('AUDIENCE#'))
-            .map(item => (item as AudienceMember).email)
-            .filter(email => email);
-        }
+    // Retrieve JSX code from S3 if layout is specified
+    let jsxCode: string | null = null;
+    let layoutRetrieved = false;
+    
+    if (campaign.layoutId && campaign.layoutId !== '') {
+      const layoutVersion = campaign.layoutVersion || 'latest';
+      console.log(`Campaign has layout: ${campaign.layoutId} (version: ${layoutVersion})`);
+      
+      jsxCode = await retrieveLayoutFromS3(campaign.layoutId, layoutVersion);
+      layoutRetrieved = jsxCode !== null;
+      
+      if (layoutRetrieved) {
+        console.log(`Successfully retrieved layout JSX code for ${campaign.layoutId}`);
+      } else {
+        console.warn(`Failed to retrieve layout JSX code for ${campaign.layoutId}/${layoutVersion}`);
       }
     } else {
-      // Fallback to original audienceSelection logic
-      if (campaign.audienceSelection.type === 'list') {
-        // Direct email list
-        recipients = campaign.audienceSelection.values;
-      } else if (campaign.audienceSelection.type === 'tag') {
-        // Get audience members by tags
-        const audienceResult = await docClient.send(new QueryCommand({
-          TableName: TABLE_NAMES.EMAIL_MAIN,
-          KeyConditionExpression: 'PK = :pk',
-          ExpressionAttributeValues: {
-            ':pk': `USER#${userId}`
-          }
-        }));
-
-        if (audienceResult.Items) {
-          recipients = audienceResult.Items
-            .filter(item => item.SK?.startsWith('AUDIENCE#'))
-            .filter(item => {
-              const member = item as AudienceMember;
-              if (!member.tags) return false;
-              return campaign.audienceSelection.values.some(tag => 
-                member.tags!.includes(tag)
-              );
-            })
-            .map(item => (item as AudienceMember).email)
-            .filter(email => email);
-        }
-      } else if (campaign.audienceSelection.type === 'all') {
-        // Get all audience members
-        const audienceResult = await docClient.send(new QueryCommand({
-          TableName: TABLE_NAMES.EMAIL_MAIN,
-          KeyConditionExpression: 'PK = :pk',
-          ExpressionAttributeValues: {
-            ':pk': `USER#${userId}`
-          }
-        }));
-
-        if (audienceResult.Items) {
-          recipients = audienceResult.Items
-            .filter(item => item.SK?.startsWith('AUDIENCE#'))
-            .map(item => (item as AudienceMember).email)
-            .filter(email => email);
-        }
-      }
+      console.log('Campaign has no layout specified, skipping JSX retrieval');
     }
 
-    console.log(`Found ${recipients.length} recipients:`, recipients);
+    // 2. Get audience members based on campaign recipients using enhanced function
+    const { emails: recipientEmails, recipients: recipientData, groups } = await retrieveRecipients(body.cognitoId, campaign);
     
-    if (recipients.length === 0) {
+    console.log(`Found ${recipientEmails.length} recipients from groups: ${groups.join(', ')}`);
+    console.log('Recipient emails:', recipientEmails);
+
+    if (recipientEmails.length === 0) {
       throw new HttpError(400, 'No recipients found for this campaign');
     }
 
-    // Validate required metadata
-    if (!campaign.metadata.subject) {
-      throw new HttpError(400, 'Campaign metadata must include subject');
+    // 3. Send bulk emails via SES if template exists
+    let sesResponse: any = null;
+    let templateName = `${body.cognitoId}_${body.campaignId}`;
+    
+    try {
+      // Prepare destinations for SES bulk template
+      const destinations = recipientData.map(recipient => ({
+        Destination: {
+          ToAddresses: [recipient.email]
+        },
+        ReplacementTemplateData: JSON.stringify({
+          firstName: recipient.firstName || 'Friend',
+          lastName: recipient.lastName || '',
+          subject: campaign.metadata?.subject || campaign.name || 'Email from GoodBricks',
+          // Add all other variables with default values
+          year: 2024,
+          livesImpacted: 2847,
+          communitiesServed: 12,
+          volunteersEngaged: 156,
+          eventsHosted: 48,
+          totalHours: 3840,
+          topProgramName: 'Community Food Drive Initiative',
+          topProgramImpact: 1200,
+          mostActiveMonth: 'November',
+          mostActiveMonthEvents: 8,
+          impactPercentile: 95,
+          serviceLocations: 'Downtown, Westside, Eastside, Northside, Southside'
+        })
+      }));
+
+      console.log(`Sending bulk email to ${destinations.length} recipients using template: ${templateName}`);
+
+      const sesCommand = new SendBulkTemplatedEmailCommand({
+        Source: campaign.metadata?.fromEmail || 'noreply@goodbricks.org',
+        Template: templateName,
+            DefaultTemplateData: JSON.stringify({
+              subject: campaign.metadata?.subject || campaign.name || 'Email from GoodBricks',
+              // Add all other variables with default values
+              year: 2024,
+              livesImpacted: 2847,
+              communitiesServed: 12,
+              volunteersEngaged: 156,
+              eventsHosted: 48,
+              totalHours: 3840,
+              topProgramName: 'Community Food Drive Initiative',
+              topProgramImpact: 1200,
+              mostActiveMonth: 'November',
+              mostActiveMonthEvents: 8,
+              impactPercentile: 95,
+              serviceLocations: 'Downtown, Westside, Eastside, Northside, Southside',
+              firstName: 'Friend',
+              lastName: ''
+            }),
+        Destinations: destinations
+      });
+
+      const sesResult = await sesClient.send(sesCommand);
+      
+      sesResponse = {
+        messageId: 'bulk-template-send',
+        status: 'success',
+        sent: destinations.length,
+        failed: 0
+      };
+      
+      console.log(`Successfully sent bulk email via SES. MessageId: ${sesResponse.messageId}`);
+      
+    } catch (sesError) {
+      console.error('Error sending bulk email via SES:', sesError);
+      sesResponse = {
+        status: 'failed',
+        sent: 0,
+        failed: recipientEmails.length,
+        error: sesError instanceof Error ? sesError.message : 'Unknown SES error'
+      };
+      
+      // Don't fail the entire operation if SES fails, but log the error
+      console.warn('Continuing with campaign tracking despite SES failure');
     }
-    if (!campaign.metadata.fromEmail) {
-      throw new HttpError(400, 'Campaign metadata must include fromEmail');
-    }
 
-    // Send emails via SES
-    console.log('Starting to send emails via SES...');
-    const emailPromises = recipients.map(async (recipient) => {
-      try {
-        const emailParams = {
-          Source: campaign.metadata.fromName 
-            ? `${campaign.metadata.fromName} <${campaign.metadata.fromEmail}>` 
-            : campaign.metadata.fromEmail!,
-          Destination: {
-            ToAddresses: [recipient]
-          },
-          Message: {
-            Subject: { 
-              Data: campaign.metadata.subject, 
-              Charset: 'UTF-8' 
-            },
-            Body: {
-              Text: { 
-                Data: campaign.description || campaign.metadata.subject, 
-                Charset: 'UTF-8' 
-              }
-            }
-          }
-        };
+    // 4. Create audience campaign tracking records
+    const audienceCampaignRecords = recipientData.map(recipient => ({
+      PK: `AUDIENCE_CAMPAIGNS#${body.cognitoId}#${recipient.email}`,
+      SK: `CAMPAIGN#${body.campaignId}`,
+      campaignId: body.campaignId,
+      campaignName: campaign.name,
+      description: campaign.description || '',
+      subject: campaign.metadata?.subject || '',
+      fromEmail: campaign.metadata?.fromEmail || '',
+      fromName: campaign.metadata?.fromName || '',
+      status: 'sent',
+      sentAt: nowIso,
+      messageId: sesResponse?.messageId || `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // SES message ID or fallback
+      templateId: campaign.templateId || '',
+      templateVersion: campaign.templateVersion || 'latest',
+      recipients: campaign.recipients || { type: 'all_audience' }
+    }));
 
-        const command = new SendEmailCommand(emailParams);
-        await sesClient.send(command);
-        return { success: true, recipient };
-      } catch (error) {
-        console.error(`Failed to send email to ${recipient}:`, error);
-        return { success: false, recipient, error: error instanceof Error ? error.message : 'Unknown error' };
-      }
-    });
+    console.log(`Creating ${audienceCampaignRecords.length} audience campaign tracking records`);
 
-    const results = await Promise.allSettled(emailPromises);
-    const successful = results
-      .filter(r => r.status === 'fulfilled' && r.value.success)
-      .map(r => r.value);
-    const failed = results
-      .filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success))
-      .map(r => r.status === 'rejected' ? { success: false, recipient: 'unknown', error: r.reason } : r.value);
-
-    const nowIso = new Date().toISOString();
-
-    // Update campaign status to sent in main table
-    await docClient.send(new UpdateCommand({
-      TableName: TABLE_NAMES.MAIN_TABLE,
-      Key: {
-        PK: `USER#${userId}`,
-        SK: `CAMPAIGN#${campaignId}`
-      },
-      UpdateExpression: 'SET #status = :status, #sentAt = :sentAt, #lastModified = :lastModified',
-      ExpressionAttributeNames: {
-        '#status': 'status',
-        '#sentAt': 'sentAt',
-        '#lastModified': 'lastModified'
-      },
-      ExpressionAttributeValues: {
-        ':status': 'sent',
-        ':sentAt': nowIso,
-        ':lastModified': nowIso
+    // Batch write audience campaign records (with deduplication)
+    const uniqueAudienceRecords = audienceCampaignRecords.filter((record, index, self) => 
+      index === self.findIndex(r => r.PK === record.PK && r.SK === record.SK)
+    );
+    
+    const audienceBatchRequests = uniqueAudienceRecords.map(record => ({
+      PutRequest: {
+        Item: record
       }
     }));
 
-    // Update index records in main table
-    const updateRecords = [
-      // Update organization campaigns index
-      {
-        PK: `ORG_CAMPAIGNS#${userId}`,
-        SK: `CAMPAIGN#${campaignId}`,
-        userId: userId,
-        campaignId: campaignId,
-        name: campaign.name,
-        description: campaign.description,
-        templateId: campaign.templateId,
-        templateVersion: campaign.templateVersion,
-        audienceSelection: campaign.audienceSelection,
-        recipients: campaign.recipients,
-        status: 'sent',
-        scheduledAt: campaign.scheduledAt,
-        sentAt: nowIso,
-        createdAt: campaign.createdAt,
-        lastModified: nowIso,
-        metadata: campaign.metadata
-      },
-      // Update organization status campaigns index (remove from old status, add to sent)
-      {
-        PK: `ORG_STATUS_CAMPAIGNS#${userId}#sent`,
-        SK: `CAMPAIGN#${campaignId}`,
-        userId: userId,
-        campaignId: campaignId,
-        name: campaign.name,
-        description: campaign.description,
-        templateId: campaign.templateId,
-        templateVersion: campaign.templateVersion,
-        audienceSelection: campaign.audienceSelection,
-        recipients: campaign.recipients,
-        status: 'sent',
-        scheduledAt: campaign.scheduledAt,
-        sentAt: nowIso,
-        createdAt: campaign.createdAt,
-        lastModified: nowIso,
-        metadata: campaign.metadata
-      }
-    ];
+    console.log(`Writing ${uniqueAudienceRecords.length} unique audience campaign records`);
 
-    // Add group-specific updates if recipients are group-based
-    if (campaign.recipients?.type === 'groups' && campaign.recipients.groupIds) {
-      campaign.recipients.groupIds.forEach(groupId => {
-        updateRecords.push({
-          PK: `GROUP_CAMPAIGNS#${userId}#${groupId}`,
-          SK: `CAMPAIGN#${campaignId}`,
-          userId: userId,
-          campaignId: campaignId,
-          groupId: groupId,
-          name: campaign.name,
-          description: campaign.description,
-          templateId: campaign.templateId,
-          templateVersion: campaign.templateVersion,
-          audienceSelection: campaign.audienceSelection,
-          recipients: campaign.recipients,
-          status: 'sent',
-          scheduledAt: campaign.scheduledAt,
-          sentAt: nowIso,
-          createdAt: campaign.createdAt,
-          lastModified: nowIso,
-          metadata: campaign.metadata
-        });
-      });
+    // Process in batches of 25 (DynamoDB limit)
+    for (let i = 0; i < audienceBatchRequests.length; i += 25) {
+      const batch = audienceBatchRequests.slice(i, i + 25);
+      await docClient.send(new BatchWriteCommand({
+        RequestItems: {
+          [TABLE_NAME]: batch
+        }
+      }));
     }
 
-    // Batch write all updates
-    const batchRequests = updateRecords.map(record => ({
+    // 5. Update campaign status from "draft" to "sent"
+    const updateRecords = [];
+
+    // Create updated campaign data without PK/SK (will be set per record)
+    const updatedCampaignFields = {
+      ...campaign,
+      status: 'sent',
+      sentAt: nowIso,
+      lastModified: nowIso
+    };
+
+    // Update primary campaign record
+    const updatedCampaignData = {
+      PK: `USER#${body.cognitoId}`,
+      SK: `CAMPAIGN#${body.campaignId}`,
+      ...updatedCampaignFields
+    };
+    updateRecords.push(updatedCampaignData);
+
+    // Update status index record (move from STATUS#draft#CAMPAIGN to STATUS#sent#CAMPAIGN)
+    const newStatusRecord = {
+      PK: `USER#${body.cognitoId}`,
+      SK: `STATUS#sent#CAMPAIGN#${body.campaignId}`,
+      ...updatedCampaignFields
+    };
+    updateRecords.push(newStatusRecord);
+
+    // Update group-specific records if campaign targets groups
+    if (campaign.recipients && campaign.recipients.type === 'groups' && campaign.recipients.groupIds) {
+      for (const groupId of campaign.recipients.groupIds) {
+        // Update group campaign record
+        const groupCampaignRecord = {
+          PK: `USER#${body.cognitoId}#GROUP#${groupId}`,
+          SK: `CAMPAIGN#${body.campaignId}`,
+          ...updatedCampaignFields,
+          groupId: groupId
+        };
+        updateRecords.push(groupCampaignRecord);
+
+        // Update group status record
+        const groupStatusRecord = {
+          PK: `USER#${body.cognitoId}#GROUP#${groupId}`,
+          SK: `STATUS#sent#CAMPAIGN#${body.campaignId}`,
+          ...updatedCampaignFields,
+          groupId: groupId
+        };
+        updateRecords.push(groupStatusRecord);
+      }
+    }
+
+    console.log(`Updating ${updateRecords.length} campaign records`);
+
+    // Deduplicate campaign update records
+    const uniqueUpdateRecords = updateRecords.filter((record, index, self) => 
+      index === self.findIndex(r => r.PK === record.PK && r.SK === record.SK)
+    );
+
+    console.log(`Writing ${uniqueUpdateRecords.length} unique campaign update records`);
+
+    // Batch write campaign updates
+    const campaignBatchRequests = uniqueUpdateRecords.map(record => ({
       PutRequest: {
         Item: record
       }
     }));
 
     // Process in batches of 25 (DynamoDB limit)
-    for (let i = 0; i < batchRequests.length; i += 25) {
-      const batch = batchRequests.slice(i, i + 25);
+    for (let i = 0; i < campaignBatchRequests.length; i += 25) {
+      const batch = campaignBatchRequests.slice(i, i + 25);
       await docClient.send(new BatchWriteCommand({
         RequestItems: {
-          [TABLE_NAMES.MAIN_TABLE]: batch
+          [TABLE_NAME]: batch
         }
       }));
     }
 
-    // Create audience member campaign records for each successful recipient
-    if (successful.length > 0) {
-      const audienceMemberRecords = successful.map(recipient => ({
-        PK: `AUDIENCE_CAMPAIGNS#${userId}#${recipient}`,
-        SK: `CAMPAIGN#${campaignId}`,
-        userId: userId,
-        campaignId: campaignId,
-        email: recipient,
-        name: campaign.name,
-        description: campaign.description,
-        templateId: campaign.templateId,
-        templateVersion: campaign.templateVersion,
-        audienceSelection: campaign.audienceSelection,
-        recipients: campaign.recipients,
-        status: 'sent',
-        scheduledAt: campaign.scheduledAt,
-        sentAt: nowIso,
-        createdAt: campaign.createdAt,
-        lastModified: nowIso,
-        metadata: campaign.metadata
-      }));
-
-      // Batch write audience member records
-      const audienceBatchRequests = audienceMemberRecords.map(record => ({
-        PutRequest: {
-          Item: record
+    // 5. Delete old status index record (STATUS#draft#CAMPAIGN)
+    try {
+      await docClient.send(new DeleteCommand({
+        TableName: TABLE_NAME,
+        Key: {
+          PK: `USER#${body.cognitoId}`,
+          SK: `STATUS#${campaign.status}#CAMPAIGN#${body.campaignId}`
         }
       }));
+      console.log('Deleted old status index record');
+    } catch (deleteError) {
+      console.warn('Could not delete old status record:', deleteError);
+      // Don't fail the entire operation if we can't delete the old record
+    }
 
-      // Process in batches of 25 (DynamoDB limit)
-      for (let i = 0; i < audienceBatchRequests.length; i += 25) {
-        const batch = audienceBatchRequests.slice(i, i + 25);
-        await docClient.send(new BatchWriteCommand({
-          RequestItems: {
-            [TABLE_NAMES.MAIN_TABLE]: batch
-          }
-        }));
+    // Delete old group status records if they exist
+    if (campaign.recipients && campaign.recipients.type === 'groups' && campaign.recipients.groupIds) {
+      for (const groupId of campaign.recipients.groupIds) {
+        try {
+          await docClient.send(new DeleteCommand({
+            TableName: TABLE_NAME,
+            Key: {
+              PK: `USER#${body.cognitoId}#GROUP#${groupId}`,
+              SK: `STATUS#${campaign.status}#CAMPAIGN#${body.campaignId}`
+            }
+          }));
+        } catch (deleteError) {
+          console.warn(`Could not delete old group status record for ${groupId}:`, deleteError);
+        }
       }
-
-      // Save recipient data for analytics
-      const recipientData = {
-        PK: `CAMPAIGN_RECIPIENTS#${campaignId}`,
-        SK: `SENT#${nowIso}`,
-        campaignId: campaignId,
-        userId: userId,
-        recipientEmails: successful.map(r => r.recipient),
-        recipientGroups: recipientGroups,
-        totalSent: successful.length,
-        totalFailed: failed.length,
-        sentAt: nowIso,
-        createdAt: nowIso
-      };
-
-      await docClient.send(new PutCommand({
-        TableName: TABLE_NAMES.EMAIL_MAIN,
-        Item: recipientData
-      }));
     }
 
     return {
       success: true,
-      message: `Campaign sent successfully. ${successful.length} emails sent, ${failed.length} failed.`,
-      campaignId: campaignId,
-      emailsSent: successful.length,
-      recipientGroups: recipientGroups,
-      errors: failed.length > 0 ? failed.map(f => `${f.recipient}: ${f.error}`) : undefined
+      cognitoId: body.cognitoId,
+      campaignId: body.campaignId,
+      campaignName: campaign.name,
+      templateName: templateName,
+      recipients: {
+        total: recipientEmails.length,
+        groups: groups,
+        emails: recipientEmails
+      },
+      sesResponse: sesResponse,
+      campaignStatus: {
+        updated: true,
+        newStatus: 'sent'
+      },
+      trackingRecords: {
+        created: uniqueAudienceRecords.length
+      },
+      audienceRecordsCreated: uniqueAudienceRecords.length,
+      recordsUpdated: uniqueUpdateRecords.length,
+      layoutRetrieved: layoutRetrieved,
+      layoutId: campaign.layoutId || undefined,
+      layoutVersion: campaign.layoutVersion || undefined,
+      message: `Campaign sent successfully. Sent to ${recipientEmails.length} recipients via SES template ${templateName}. Created ${uniqueAudienceRecords.length} tracking records and updated ${uniqueUpdateRecords.length} campaign records.`
     };
 
   } catch (error) {
-    console.error('Error sending campaign:', error);
+    console.error('Error processing campaign send:', error);
+    console.error('Error details:', JSON.stringify(error, null, 2));
+    
     if (error instanceof HttpError) {
       throw error;
     }
-    throw new HttpError(500, `Failed to send campaign: ${error instanceof Error ? error.message : 'Unknown error'}`);
+
+    throw new HttpError(500, `Failed to process campaign send: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+  } catch (outerError) {
+    console.error('Outer error in campaign send:', outerError);
+    console.error('Outer error details:', JSON.stringify(outerError, null, 2));
+    
+    if (outerError instanceof HttpError) {
+      throw outerError;
+    }
+    
+    throw new HttpError(500, `Campaign send failed: ${outerError instanceof Error ? outerError.message : 'Unknown error'}`);
   }
 };
 

@@ -1,0 +1,12 @@
+{
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"cognitoId\":\"cognito-user-cair\",\"campaignId\":\"cmp-ee96a152\"}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/send-campaign",
+  "resource": "/send-campaign"
+}

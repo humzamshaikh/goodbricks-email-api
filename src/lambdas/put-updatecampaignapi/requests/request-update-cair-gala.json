@@ -1,0 +1,12 @@
+{
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"cognitoId\":\"cognito-user-cair\",\"campaignId\":\"cmp-b8d5cfe2\",\"name\":\"Updated: Annual Gala 2025 - Special Edition\",\"description\":\"Updated: Join us for our spectacular annual fundraising gala with special guests\",\"status\":\"scheduled\",\"scheduledAt\":\"2025-12-15T18:00:00Z\",\"metadata\":{\"subject\":\"Updated: You're Invited - Annual Gala 2025 Special Edition!\",\"fromName\":\"CAIR Events Team\",\"fromEmail\":\"gala@cair.com\",\"previewText\":\"Updated: Join us for an unforgettable evening of celebration, community, and special performances\"}}",
+  "isBase64Encoded": false,
+  "httpMethod": "PUT",
+  "path": "/update-campaign",
+  "resource": "/update-campaign"
+}

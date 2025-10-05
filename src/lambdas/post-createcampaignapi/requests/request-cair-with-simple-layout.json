@@ -1,0 +1,12 @@
+{
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"cognitoId\":\"cognito-user-cair\",\"name\":\"Simple Layout Test Campaign\",\"description\":\"Testing campaign with simple layout that should render successfully\",\"layoutId\":\"newsletters-simple-test\",\"layoutVersion\":\"latest\",\"audienceSelection\":{\"type\":\"groups\",\"values\":[\"volunteers\"]},\"recipients\":{\"type\":\"groups\",\"groupIds\":[\"volunteers\"]},\"status\":\"draft\",\"metadata\":{\"subject\":\"Simple Layout Test\",\"fromName\":\"GoodBricks Team\",\"fromEmail\":\"noreply@goodbricks.org\",\"previewText\":\"Testing our simple layout rendering\"}}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/create-campaign",
+  "resource": "/create-campaign"
+}

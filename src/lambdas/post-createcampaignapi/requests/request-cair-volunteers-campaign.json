@@ -1,0 +1,12 @@
+{
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"cognitoId\":\"cognito-user-cair\",\"name\":\"Volunteer Recruitment Drive\",\"description\":\"Join our volunteer team and make a difference\",\"templateId\":\"volunteer-template\",\"audienceSelection\":{\"type\":\"tag\",\"values\":[\"volunteers\"]},\"recipients\":{\"type\":\"groups\",\"groupIds\":[\"volunteers\"]},\"status\":\"draft\",\"metadata\":{\"subject\":\"Join Our Volunteer Team - Make a Difference!\",\"fromName\":\"CAIR Volunteer Coordinator\",\"fromEmail\":\"volunteers@cair.com\",\"previewText\":\"Help us build a stronger community together\"}}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/create-campaign",
+  "resource": "/create-campaign"
+}

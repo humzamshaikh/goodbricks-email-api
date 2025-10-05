@@ -1,0 +1,12 @@
+{
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"cognitoId\":\"cognito-user-cair\",\"campaignId\":\"cmp-3d11a33a\",\"name\":\"Updated 18th Annual Gala Announcement\",\"description\":\"Updated description for the gala event\"}",
+  "isBase64Encoded": false,
+  "httpMethod": "PUT",
+  "path": "/update-campaign",
+  "resource": "/update-campaign"
+}

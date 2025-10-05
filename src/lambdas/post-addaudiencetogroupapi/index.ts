@@ -1,6 +1,6 @@
 import { createHttpHandler, ApiGatewayEventLike } from '../../lib/handler.js';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, QueryCommand, PutCommand, UpdateCommand, BatchWriteCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, QueryCommand, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { HttpError } from '../../lib/http.js';
 
 // AWS Clients
@@ -12,13 +12,14 @@ const docClient = DynamoDBDocumentClient.from(dynamoClient);
 const TABLE_NAME = process.env.MAIN_TABLE_NAME || 'goodbricks-email-main';
 
 interface AddAudienceToGroupRequest {
-  userId: string; // Cognito user ID (e.g., "cognito-user-icsd")
-  groupId: string; // Group ID (e.g., "vip-members")
+  cognitoId: string; // Cognito user ID
+  groupId: string; // Group ID
   emails: string[]; // Array of specific email addresses to add to the group
 }
 
 interface AddAudienceToGroupResponse {
   success: boolean;
+  cognitoId?: string;
   groupId?: string;
   membersProcessed?: number;
   membersSkipped?: number;
@@ -37,8 +38,8 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<AddAudienceToGr
   }
 
   // Validate required fields
-  if (!body.userId || typeof body.userId !== 'string') {
-    throw new HttpError(400, 'userId is required and must be a string');
+  if (!body.cognitoId || typeof body.cognitoId !== 'string') {
+    throw new HttpError(400, 'cognitoId is required and must be a string');
   }
 
   if (!body.groupId || typeof body.groupId !== 'string') {
@@ -58,123 +59,128 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<AddAudienceToGr
   }
 
   try {
-    // Step 1: Query all audience members for the user
-    const queryParams = {
-      TableName: TABLE_NAME,
-      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
-      ExpressionAttributeValues: {
-        ':pk': `USER#${body.userId}`,
-        ':sk': 'AUDIENCE#'
-      }
-    };
-
-    const queryResult = await docClient.send(new QueryCommand(queryParams));
-    const allAudienceMembers = queryResult.Items || [];
-
-    if (allAudienceMembers.length === 0) {
-      return {
-        success: true,
-        groupId: body.groupId,
-        membersProcessed: 0,
-        membersSkipped: body.emails.length,
-        message: 'No audience members found for this user',
-        details: {
-          processedEmails: [],
-          skippedEmails: body.emails
-        }
-      };
-    }
-
-    // Filter audience members to only include requested emails
-    const requestedMembers = allAudienceMembers.filter(member => 
-      body.emails.includes(member.email)
-    );
-
+    const nowIso = new Date().toISOString();
     const processedEmails: string[] = [];
-    const skippedEmails: string[] = body.emails.filter(email => 
-      !allAudienceMembers.some(member => member.email === email)
-    );
-
-    if (requestedMembers.length === 0) {
-      return {
-        success: true,
-        groupId: body.groupId,
-        membersProcessed: 0,
-        membersSkipped: body.emails.length,
-        message: 'No matching audience members found for the provided emails',
-        details: {
-          processedEmails: [],
-          skippedEmails: body.emails
-        }
-      };
-    }
-
-    // Step 2: Process each requested audience member
+    const skippedEmails: string[] = [];
     let processedCount = 0;
-    const batchSize = 25; // DynamoDB batch limit
 
-    for (let i = 0; i < requestedMembers.length; i += batchSize) {
-      const batch = requestedMembers.slice(i, i + batchSize);
-      
-      // Process batch in parallel
-      await Promise.all(batch.map(async (member) => {
-        // Step 2a: Create new group-specific item
-        const groupItem = {
-          PK: `USER#${body.userId}#GROUP#${body.groupId}`,
-          SK: member.SK, // Same SK as original (AUDIENCE#{email})
-          entityType: 'AUDIENCE',
-          userId: member.userId,
-          email: member.email,
-          firstName: member.firstName,
-          lastName: member.lastName,
-          tags: member.tags || [],
-          organization: member.organization || '',
-          createdAt: member.createdAt,
-          lastModified: new Date().toISOString()
+    // Process each email individually
+    for (const email of body.emails) {
+      try {
+        // Step 1: Get the audience member details
+        const audienceQuery = {
+          TableName: TABLE_NAME,
+          KeyConditionExpression: 'PK = :pk AND SK = :sk',
+          ExpressionAttributeValues: {
+            ':pk': `USER#${body.cognitoId}`,
+            ':sk': `AUDIENCE#${email}`
+          }
         };
 
-        // Step 2b: Update original item to add group tag
-        const currentTags = member.tags || [];
-        const updatedTags = [...currentTags, body.groupId];
+        const audienceResult = await docClient.send(new QueryCommand(audienceQuery));
+        const audienceMember = audienceResult.Items?.[0];
 
-        // Execute both operations in parallel
-        await Promise.all([
-          // Create group-specific item
+        if (!audienceMember) {
+          skippedEmails.push(email);
+          continue;
+        }
+
+        // Step 2: Create Group Association Record: USER#{cognitoId}#GROUP#{groupId} + AUDIENCE#{email}
+        const groupAssociationRecord = {
+          PK: `USER#${body.cognitoId}#GROUP#${body.groupId}`,
+          SK: `AUDIENCE#${email}`,
+          userId: body.cognitoId,
+          email: email,
+          firstName: audienceMember.firstName || '',
+          lastName: audienceMember.lastName || '',
+          tags: audienceMember.tags || [],
+          organization: audienceMember.organization || '',
+          entityType: 'AUDIENCE',
+          createdAt: audienceMember.createdAt,
+          lastModified: nowIso
+        };
+
+        // Step 3: Create Member Group Association Record: USER#{cognitoId}#AUDIENCE#{email} + GROUP#{groupId}
+        const memberGroupRecord = {
+          PK: `USER#${body.cognitoId}#AUDIENCE#${email}`,
+          SK: `GROUP#${body.groupId}`,
+          groupId: body.groupId,
+          addedAt: nowIso
+        };
+
+        // Step 4: Execute all operations in parallel
+        const results = await Promise.allSettled([
+          // Create group association record
           docClient.send(new PutCommand({
             TableName: TABLE_NAME,
-            Item: groupItem,
+            Item: groupAssociationRecord,
             ConditionExpression: 'attribute_not_exists(PK) AND attribute_not_exists(SK)'
           })),
-          // Update original item with new tag
-          docClient.send(new UpdateCommand({
+          // Create member group record
+          docClient.send(new PutCommand({
             TableName: TABLE_NAME,
-            Key: {
-              PK: member.PK,
-              SK: member.SK
-            },
-            UpdateExpression: 'SET #tags = :tags, #lastModified = :lastModified',
-            ExpressionAttributeNames: {
-              '#tags': 'tags',
-              '#lastModified': 'lastModified'
-            },
-            ExpressionAttributeValues: {
-              ':tags': updatedTags,
-              ':lastModified': new Date().toISOString()
-            }
+            Item: memberGroupRecord,
+            ConditionExpression: 'attribute_not_exists(PK) AND attribute_not_exists(SK)'
           }))
         ]);
 
+        // Check if any operations failed
+        const failedResults = results.filter(result => result.status === 'rejected');
+        if (failedResults.length > 0) {
+          const conditionalFailures = failedResults.filter(result => 
+            result.status === 'rejected' && 
+            result.reason && 
+            (result.reason.message?.includes('ConditionalCheckFailedException') || 
+             (result.reason as any).__type?.includes('ConditionalCheckFailedException'))
+          );
+          
+          if (conditionalFailures.length === failedResults.length) {
+            // All failures are conditional check failures - member already in group
+            skippedEmails.push(email);
+            continue;
+          } else {
+            // Some other error occurred
+            throw new Error(`Failed to add member ${email} to group`);
+          }
+        }
+
         processedCount++;
-        processedEmails.push(member.email);
+        processedEmails.push(email);
+
+      } catch (error) {
+        console.error(`Error processing email ${email}:`, error);
+        // If it's a conditional check failure, the member is already in the group
+        if (error instanceof Error && error.message.includes('ConditionalCheckFailedException')) {
+          skippedEmails.push(email);
+        } else {
+          throw error; // Re-throw unexpected errors
+        }
+      }
+    }
+
+    // Step 5: Update Group Metadata - Increment memberCount
+    if (processedCount > 0) {
+      await docClient.send(new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: {
+          PK: `USER#${body.cognitoId}`,
+          SK: `GROUPMETADATA#${body.groupId}`
+        },
+        UpdateExpression: 'ADD memberCount :increment SET lastModified = :lastModified',
+        ExpressionAttributeValues: {
+          ':increment': processedCount,
+          ':lastModified': nowIso
+        }
       }));
     }
 
     return {
       success: true,
+      cognitoId: body.cognitoId,
       groupId: body.groupId,
       membersProcessed: processedCount,
       membersSkipped: skippedEmails.length,
-      message: `Successfully added ${processedCount} audience members to group ${body.groupId}. ${skippedEmails.length} emails were not found.`,
+      message: `Successfully added ${processedCount} audience members to group ${body.groupId}. ${skippedEmails.length} emails were skipped.`,
       details: {
         processedEmails,
         skippedEmails
@@ -184,11 +190,6 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<AddAudienceToGr
   } catch (error) {
     console.error('Error adding audience to group:', error);
     
-    // Handle conditional check failure (group item already exists)
-    if (error instanceof Error && error.message.includes('ConditionalCheckFailedException')) {
-      throw new HttpError(409, `Group items already exist for user: ${body.userId} and group: ${body.groupId}`);
-    }
-
     throw new HttpError(500, `Failed to add audience to group: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };

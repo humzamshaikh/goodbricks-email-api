@@ -1,0 +1,12 @@
+{
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"cognitoId\":\"cognito-user-cair\",\"name\":\"Campaign Without Layout\",\"description\":\"A campaign created without any layout assigned\",\"audienceSelection\":{\"type\":\"groups\",\"values\":[\"volunteers\"]},\"recipients\":{\"type\":\"groups\",\"groupIds\":[\"volunteers\"]},\"status\":\"draft\",\"metadata\":{\"subject\":\"Campaign Without Layout\",\"fromName\":\"GoodBricks Team\",\"fromEmail\":\"noreply@goodbricks.org\",\"previewText\":\"This campaign has no layout yet\"}}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/create-campaign",
+  "resource": "/create-campaign"
+}

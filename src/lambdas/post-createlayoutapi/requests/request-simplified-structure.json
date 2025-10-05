@@ -1,0 +1,12 @@
+{
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"name\":\"monthly-update\",\"description\":\"Monthly newsletter update layout\",\"category\":\"newsletters\",\"jsxCode\":\"import React from 'react';\\n\\ninterface MonthlyUpdateProps {\\n  firstName: string;\\n  lastName: string;\\n  month: string;\\n}\\n\\nconst MonthlyUpdate: React.FC<MonthlyUpdateProps> = ({ firstName, lastName, month }) => {\\n  return (\\n    <div style={{ fontFamily: 'Arial, sans-serif', maxWidth: '600px', margin: '0 auto' }}>\\n      <h1 style={{ color: '#333', textAlign: 'center' }}>Monthly Update - {month}</h1>\\n      <p>Dear {firstName} {lastName},</p>\\n      <p>Here's what happened this month in our community!</p>\\n      <p>Best regards,<br/>The Newsletter Team</p>\\n    </div>\\n  );\\n};\\n\\nexport default MonthlyUpdate;\"}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/create-layout",
+  "resource": "/create-layout"
+}

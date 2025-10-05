@@ -1,0 +1,12 @@
+{
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"cognitoId\":\"cognito-user-test\",\"name\":\"Test Campaign\",\"description\":\"A test campaign for development\",\"audienceSelection\":{\"type\":\"all\",\"values\":[]},\"metadata\":{\"subject\":\"Test Email Subject\",\"fromName\":\"Test Organization\",\"fromEmail\":\"test@example.com\"}}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/create-campaign",
+  "resource": "/create-campaign"
+}

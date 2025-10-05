@@ -1,11 +1,12 @@
 {
-  "pathParameters": {
-    "userId": "cognito-user-cair"
-  },
-  "body": "{\"userId\":\"cognito-user-cair\",\"name\":\"18th Annual Gala Announcement\",\"description\":\"Invitation to CAIR's 18th Annual Gala event\",\"audienceSelection\":{\"type\":\"tag\",\"values\":[\"volunteers\"]},\"recipients\":{\"type\":\"groups\",\"groupIds\":[\"volunteers\"]},\"metadata\":{\"subject\":\"You're Invited to CAIR's 18th Annual Gala\",\"fromEmail\":\"humza.shaikh22341@gmail.com\",\"fromName\":\"CAIR Team\"},\"templateId\":\"event-gala-announcement\",\"templateVersion\":\"latest\"}",
-  "httpMethod": "POST",
-  "path": "/create-campaign/{userId}",
+  "pathParameters": null,
+  "queryStringParameters": null,
   "headers": {
     "Content-Type": "application/json"
-  }
+  },
+  "body": "{\"cognitoId\":\"cognito-user-cair\",\"name\":\"Annual Gala 2025\",\"description\":\"Join us for our annual fundraising gala\",\"templateId\":\"gala-announcement\",\"audienceSelection\":{\"type\":\"tag\",\"values\":[\"volunteers\",\"events\"]},\"recipients\":{\"type\":\"groups\",\"groupIds\":[\"group-1737949014-7r7m3\"]},\"status\":\"draft\",\"metadata\":{\"subject\":\"You're Invited: Annual Gala 2025\",\"fromName\":\"CAIR Events\",\"fromEmail\":\"events@cair.com\",\"previewText\":\"Join us for an evening of celebration and community\"}}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/create-campaign",
+  "resource": "/create-campaign"
 }

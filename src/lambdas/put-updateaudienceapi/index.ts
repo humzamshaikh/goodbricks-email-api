@@ -1,6 +1,7 @@
 import { createHttpHandler, ApiGatewayEventLike } from '../../lib/handler.js';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { HttpError } from '../../lib/http.js';
 
 // AWS Clients
 const dynamoClient = new DynamoDBClient({
@@ -8,117 +9,121 @@ const dynamoClient = new DynamoDBClient({
 });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
-const TABLE_NAMES = {
-  AUDIENCE: process.env.AUDIENCE_TABLE_NAME || 'audience'
-} as const;
+const TABLE_NAME = process.env.MAIN_TABLE_NAME || 'goodbricks-email-main';
 
 interface UpdateAudienceRequest {
+  cognitoId: string;
+  email: string;
   firstName?: string;
   lastName?: string;
   tags?: string[]; // full replacement
-  addTag?: string; // convenience: adds to tags if not present
-  removeTag?: string; // convenience: removes from tags if present
-  status?: string; // optional if using status attribute
 }
 
 interface UpdateAudienceResponse {
   success: boolean;
+  cognitoId?: string;
+  email?: string;
   audience?: any;
   message?: string;
 }
 
 const handlerLogic = async (event: ApiGatewayEventLike): Promise<UpdateAudienceResponse> => {
+  const body = event.body ? JSON.parse(event.body) as UpdateAudienceRequest : undefined;
+  
+  if (!body) {
+    throw new HttpError(400, 'Request body is required');
+  }
+
+  if (!body.cognitoId || typeof body.cognitoId !== 'string') {
+    throw new HttpError(400, 'cognitoId is required and must be a string');
+  }
+
+  if (!body.email || typeof body.email !== 'string') {
+    throw new HttpError(400, 'email is required and must be a string');
+  }
+
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(body.email)) {
+    throw new HttpError(400, 'Invalid email format');
+  }
+
+  // Check if at least one field to update is provided
+  const hasUpdates = body.firstName !== undefined || body.lastName !== undefined || body.tags !== undefined;
+  if (!hasUpdates) {
+    throw new HttpError(400, 'At least one field (firstName, lastName, or tags) must be provided for update');
+  }
+
   try {
-    const userId = event.pathParameters?.userId || event.queryStringParameters?.userId;
-    const email = event.pathParameters?.email || event.queryStringParameters?.email;
-
-    if (!userId) {
-      throw new Error('userId is required');
-    }
-    if (!email) {
-      throw new Error('email is required');
-    }
-
-    const body = event.body ? JSON.parse(event.body) : {};
-    const updates: UpdateAudienceRequest = body;
-    if (Object.keys(updates).length === 0) {
-      throw new Error('No update fields provided');
-    }
-
+    const nowIso = new Date().toISOString();
+    
     // Build dynamic UpdateExpression
     const setExpressions: string[] = [];
-    const removeExpressions: string[] = [];
     const expressionAttributeNames: Record<string, string> = {};
     const expressionAttributeValues: Record<string, any> = {};
 
     // Always update lastModified
     setExpressions.push('#lastModified = :lastModified');
     expressionAttributeNames['#lastModified'] = 'lastModified';
-    expressionAttributeValues[':lastModified'] = new Date().toISOString();
+    expressionAttributeValues[':lastModified'] = nowIso;
 
-    if (updates.firstName !== undefined) {
+    // Add fields to update if provided
+    if (body.firstName !== undefined) {
       setExpressions.push('#firstName = :firstName');
       expressionAttributeNames['#firstName'] = 'firstName';
-      expressionAttributeValues[':firstName'] = updates.firstName;
+      expressionAttributeValues[':firstName'] = body.firstName;
     }
-    if (updates.lastName !== undefined) {
+
+    if (body.lastName !== undefined) {
       setExpressions.push('#lastName = :lastName');
       expressionAttributeNames['#lastName'] = 'lastName';
-      expressionAttributeValues[':lastName'] = updates.lastName;
-    }
-    if (updates.status !== undefined) {
-      setExpressions.push('#status = :status');
-      expressionAttributeNames['#status'] = 'status';
-      expressionAttributeValues[':status'] = updates.status;
+      expressionAttributeValues[':lastName'] = body.lastName;
     }
 
-    // Tags logic
-    if (updates.tags !== undefined) {
+    if (body.tags !== undefined) {
       setExpressions.push('#tags = :tags');
       expressionAttributeNames['#tags'] = 'tags';
-      expressionAttributeValues[':tags'] = updates.tags;
-    }
-    if (updates.addTag) {
-      // If tags not set above, use list_append + if_not_exists to ensure array exists
-      expressionAttributeNames['#tags'] = 'tags';
-      // Prevent duplicates by using a SET with list_append and a condition expression would be ideal.
-      // Simpler approach: use list_append and rely on client to dedupe later.
-      setExpressions.push('#tags = list_append(if_not_exists(#tags, :emptyList), :tagToAdd)');
-      expressionAttributeValues[':tagToAdd'] = [updates.addTag];
-      expressionAttributeValues[':emptyList'] = [];
-    }
-    if (updates.removeTag) {
-      // Cannot easily remove by value without knowing index; simple approach: overwrite tags provided explicitly.
-      // Here we signal that removeTag requires current tags to be provided in "tags" for accuracy.
-      // If not provided, we do nothing for removeTag.
-    }
-
-    const updateExpressionParts: string[] = [];
-    if (setExpressions.length > 0) {
-      updateExpressionParts.push(`SET ${setExpressions.join(', ')}`);
-    }
-    if (removeExpressions.length > 0) {
-      updateExpressionParts.push(`REMOVE ${removeExpressions.join(', ')}`);
+      expressionAttributeValues[':tags'] = body.tags;
     }
 
     const updateCommand = new UpdateCommand({
-      TableName: TABLE_NAMES.AUDIENCE,
-      Key: { userId, email },
-      UpdateExpression: updateExpressionParts.join(' '),
-      ExpressionAttributeNames: Object.keys(expressionAttributeNames).length ? expressionAttributeNames : undefined,
-      ExpressionAttributeValues: Object.keys(expressionAttributeValues).length ? expressionAttributeValues : undefined,
-      ReturnValues: 'ALL_NEW'
+      TableName: TABLE_NAME,
+      Key: { 
+        PK: `USER#${body.cognitoId}`,
+        SK: `AUDIENCE#${body.email}`
+      },
+      UpdateExpression: `SET ${setExpressions.join(', ')}`,
+      ExpressionAttributeNames: expressionAttributeNames,
+      ExpressionAttributeValues: expressionAttributeValues,
+      ReturnValues: 'ALL_NEW',
+      ConditionExpression: 'attribute_exists(PK) AND attribute_exists(SK)'
     });
 
     const result = await docClient.send(updateCommand);
+    
     if (!result.Attributes) {
-      return { success: false, message: 'Audience member not found or update failed' };
+      throw new HttpError(404, 'Audience member not found');
     }
 
-    return { success: true, audience: result.Attributes, message: 'Audience member updated successfully' };
+    return { 
+      success: true, 
+      cognitoId: body.cognitoId,
+      email: body.email,
+      audience: result.Attributes, 
+      message: 'Audience member updated successfully' 
+    };
+
   } catch (error) {
     console.error('Error updating audience member:', error);
-    throw new Error(`Failed to update audience member: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    
+    // Handle conditional check failure (audience member not found)
+    if (error instanceof Error && 
+        (error.message.includes('ConditionalCheckFailedException') || 
+         (error as any).__type?.includes('ConditionalCheckFailedException'))) {
+      throw new HttpError(404, `Audience member not found: ${body.email}`);
+    }
+
+    throw new HttpError(500, `Failed to update audience member: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
 

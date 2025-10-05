@@ -1,0 +1,12 @@
+{
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"cognitoId\":\"cognito-user-cair\",\"email\":\"omaralt148@gmail.com\",\"tags\":[\"volunteers\",\"newsletter\",\"events\"]}",
+  "isBase64Encoded": false,
+  "httpMethod": "PUT",
+  "path": "/update-audience",
+  "resource": "/update-audience"
+}

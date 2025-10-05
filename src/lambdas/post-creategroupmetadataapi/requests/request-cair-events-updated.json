@@ -1,0 +1,12 @@
+{
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"cognitoId\":\"cognito-user-cair\",\"groupName\":\"Events\",\"description\":\"Group for event announcements and updates\",\"isActive\":true}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/create-group-metadata",
+  "resource": "/create-group-metadata"
+}

@@ -12,22 +12,17 @@ const docClient = DynamoDBDocumentClient.from(dynamoClient);
 const TABLE_NAME = process.env.MAIN_TABLE_NAME || 'goodbricks-email-main';
 
 interface CreateGroupMetadataRequest {
-  userId: string; // Cognito user ID
-  groupId: string; // Group identifier (e.g., "vip-members", "newsletter-subscribers")
+  cognitoId: string; // Cognito user ID
   groupName: string; // Display name for the group
   description?: string; // Optional description
-  memberCount: number; // Number of members in the group
-  totalCampaignsSent?: number; // Total campaigns sent to this group (default: 0)
-  lastCampaignSent?: string; // ISO date of last campaign sent
-  averageOpenRate?: number; // Average open rate (0.0 to 1.0)
-  averageClickRate?: number; // Average click rate (0.0 to 1.0)
+  groupId?: string; // Optional group identifier - will be generated if not provided
   isActive?: boolean; // Whether the group is active (default: true)
 }
 
 interface CreateGroupMetadataResponse {
   success: boolean;
   groupId?: string;
-  group?: any;
+  groupMetadata?: any;
   message?: string;
 }
 
@@ -39,38 +34,33 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<CreateGroupMeta
   }
 
   // Validate required fields
-  if (!body.userId || typeof body.userId !== 'string') {
-    throw new HttpError(400, 'userId is required and must be a string');
-  }
-
-  if (!body.groupId || typeof body.groupId !== 'string') {
-    throw new HttpError(400, 'groupId is required and must be a string');
+  if (!body.cognitoId || typeof body.cognitoId !== 'string') {
+    throw new HttpError(400, 'cognitoId is required and must be a string');
   }
 
   if (!body.groupName || typeof body.groupName !== 'string') {
     throw new HttpError(400, 'groupName is required and must be a string');
   }
 
-  if (typeof body.memberCount !== 'number' || body.memberCount < 0) {
-    throw new HttpError(400, 'memberCount is required and must be a non-negative number');
-  }
-
   try {
     const nowIso = new Date().toISOString();
     
-    // Create the group metadata item
+    // Generate unique groupId if not provided
+    const groupId = body.groupId || `group-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Create the group metadata item with specified defaults
     const groupItem = {
-      PK: `USER#${body.userId}`,
-      SK: `GROUPMETADATA#${body.groupId}`,
-      userId: body.userId,
-      groupId: body.groupId,
+      PK: `USER#${body.cognitoId}`,
+      SK: `GROUPMETADATA#${groupId}`,
+      userId: body.cognitoId,
+      groupId: groupId,
       groupName: body.groupName,
       description: body.description || '',
-      memberCount: body.memberCount,
-      totalCampaignsSent: body.totalCampaignsSent || 0,
-      lastCampaignSent: body.lastCampaignSent || '',
-      averageOpenRate: body.averageOpenRate || 0,
-      averageClickRate: body.averageClickRate || 0,
+      memberCount: 0, // Initial: 0
+      totalCampaignsSent: 0, // Initial: 0
+      lastCampaignSent: null, // Initial: null
+      averageOpenRate: 0, // Initial: 0
+      averageClickRate: 0, // Initial: 0
       isActive: body.isActive !== undefined ? body.isActive : true,
       createdAt: nowIso,
       lastModified: nowIso
@@ -85,8 +75,8 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<CreateGroupMeta
 
     return { 
       success: true, 
-      groupId: body.groupId,
-      group: groupItem,
+      groupId: groupId,
+      groupMetadata: groupItem,
       message: 'Group metadata created successfully' 
     };
 
@@ -95,7 +85,8 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<CreateGroupMeta
     
     // Handle conditional check failure (group metadata already exists)
     if (error instanceof Error && error.message.includes('ConditionalCheckFailedException')) {
-      throw new HttpError(409, `Group metadata already exists for user: ${body.userId} and group: ${body.groupId}`);
+      const groupId = body.groupId || 'generated';
+      throw new HttpError(409, `Group metadata already exists for user: ${body.cognitoId} and group: ${groupId}`);
     }
 
     throw new HttpError(500, `Failed to create group metadata: ${error instanceof Error ? error.message : 'Unknown error'}`);

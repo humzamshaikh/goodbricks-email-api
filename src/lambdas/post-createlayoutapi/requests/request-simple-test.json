@@ -1,0 +1,12 @@
+{
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"name\":\"simple-test\",\"description\":\"Simple test layout without TypeScript interfaces\",\"category\":\"newsletters\",\"jsxCode\":\"import React from 'react';\\n\\nexport default function SimpleTestEmail({ firstName, lastName }) {\\n  return (\\n    <div style={{ fontFamily: 'Arial, sans-serif', maxWidth: '600px', margin: '0 auto' }}>\\n      <div style={{ padding: '20px', textAlign: 'center' }}>\\n        <h1 style={{ color: '#333' }}>Hello {firstName} {lastName}!</h1>\\n        <p style={{ fontSize: '16px', color: '#666' }}>\\n          This is a simple test email template.\\n        </p>\\n        <p style={{ fontSize: '14px', color: '#999' }}>\\n          Thank you for testing our email system!\\n        </p>\\n      </div>\\n    </div>\\n  );\\n}\"}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/create-layout",
+  "resource": "/create-layout"
+}

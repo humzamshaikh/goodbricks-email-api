@@ -1,0 +1,12 @@
+{
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"cognitoId\":\"cognito-user-cair\",\"campaignId\":\"cmp-fc764175\",\"recipients\":{\"type\":\"groups\",\"groupIds\":[\"volunteers\"]}}",
+  "isBase64Encoded": false,
+  "httpMethod": "PUT",
+  "path": "/update-campaign",
+  "resource": "/update-campaign"
+}

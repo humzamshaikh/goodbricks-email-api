@@ -1,0 +1,12 @@
+{
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"cognitoId\":\"cognito-user-cair\",\"name\":\"Welcome Campaign with Layout\",\"description\":\"Campaign using welcome email layout\",\"layoutId\":\"newsletters-welcome-series\",\"layoutVersion\":\"latest\",\"audienceSelection\":{\"type\":\"groups\",\"values\":[\"volunteers\"]},\"recipients\":{\"type\":\"groups\",\"groupIds\":[\"volunteers\"]},\"status\":\"draft\",\"metadata\":{\"subject\":\"Welcome to Our Newsletter!\",\"fromName\":\"GoodBricks Team\",\"fromEmail\":\"noreply@goodbricks.org\",\"previewText\":\"We're excited to have you on board!\"}}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/create-campaign",
+  "resource": "/create-campaign"
+}

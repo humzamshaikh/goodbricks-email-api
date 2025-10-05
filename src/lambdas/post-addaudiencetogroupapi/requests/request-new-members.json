@@ -1,0 +1,12 @@
+{
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"cognitoId\":\"cognito-user-cair\",\"groupId\":\"volunteers\",\"emails\":[\"newmember1@example.com\",\"newmember2@example.com\"]}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/add-audience-to-group",
+  "resource": "/add-audience-to-group"
+}

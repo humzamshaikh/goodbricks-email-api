@@ -25,10 +25,7 @@ const sesClient = new SESClient({
   region: process.env.AWS_REGION || 'us-west-1'
 });
 
-const TABLE_NAMES = {
-  EMAIL_CAMPAIGNS: process.env.EMAIL_CAMPAIGNS_TABLE_NAME || 'email-campaigns',
-  MAIN_TABLE: process.env.MAIN_TABLE_NAME || 'goodbricks-email-main'
-} as const;
+const TABLE_NAME = process.env.MAIN_TABLE_NAME || 'goodbricks-email-main';
 
 const BUCKET_NAME = process.env.EMAIL_LAYOUTS_BUCKET_NAME || 'gb-email-layouts-900546257868-us-west-1';
 
@@ -98,37 +95,45 @@ async function renderJsxToHtml(jsxCode: string): Promise<{ html: string; variabl
     // Create a proxy for template variables
     const templateProxy = createTemplateVariableProxy();
     
-    // Render the component with the proxy
-    const element = React.createElement(Component, templateProxy);
-    const html = await render(element);
-    
-    // Extract variables from the JSX code by looking for function parameters
+    // Extract variables from function parameters first
     const functionParamRegex = /function\s+\w+\s*\(\s*\{([^}]+)\}/;
     const arrowParamRegex = /\(\s*\{([^}]+)\}\s*\)\s*=>/;
     const destructuringRegex = /\(\s*\{([^}]+)\}\s*\)/;
+    const exportDefaultRegex = /export\s+default\s+function\s+\w+\s*\(\s*\{([^}]+)\}\s*:?\s*\w*\s*\)/;
     
-    let variables: string[] = [];
-    
-    // Try to extract from function parameters
-    const functionMatch = jsxCode.match(functionParamRegex) || jsxCode.match(arrowParamRegex) || jsxCode.match(destructuringRegex);
+    let paramVariables: string[] = [];
+    const functionMatch = jsxCode.match(exportDefaultRegex) || jsxCode.match(functionParamRegex) || jsxCode.match(arrowParamRegex) || jsxCode.match(destructuringRegex);
     if (functionMatch) {
       const paramString = functionMatch[1];
-      variables = paramString
+      paramVariables = paramString
         .split(',')
         .map(param => param.trim())
+        .map(param => param.replace(/\?:\s*\w+.*$/, '').replace(/=\s*[^,]+/, '').trim()) // Remove TypeScript types and default values
         .filter(param => param.length > 0);
     }
     
-    // Also try to extract from the rendered HTML as fallback
-    const variableRegex = /\{\{(\w+)\}\}/g;
-    let match;
-    while ((match = variableRegex.exec(html)) !== null) {
-      if (!variables.includes(match[1])) {
-        variables.push(match[1]);
-      }
-    }
+    // Create props object with all detected variables
+    const propsWithVariables: any = {};
+    paramVariables.forEach(variable => {
+      propsWithVariables[variable] = `{{${variable}}}`;
+    });
     
-    return { html, variables };
+    // Render the component with proper props
+    const element = React.createElement(Component, propsWithVariables);
+    const html = await render(element);
+    
+    // Extract variables from the rendered HTML by finding all {{variableName}} patterns
+    const variableMatches = html.match(/\{\{([^}]+)\}\}/g) || [];
+    const htmlVariables = [...new Set(variableMatches.map(match => match.slice(2, -2)))];
+    
+    // Combine parameter variables and HTML variables
+    const allVariables = [...new Set([...paramVariables, ...htmlVariables])];
+    
+    console.log('Detected variables from parameters:', paramVariables);
+    console.log('Detected variables from rendered HTML:', htmlVariables);
+    console.log('All variables:', allVariables);
+    
+    return { html, variables: allVariables };
   } catch (error) {
     console.error('Error rendering JSX to HTML:', error);
     throw new Error(`Failed to render JSX: ${error instanceof Error ? error.message : String(error)}`);
@@ -162,8 +167,7 @@ async function createOrUpdateSesTemplate(templateName: string, htmlContent: stri
           TemplateName: templateName,
           SubjectPart: subject,
           HtmlPart: htmlContent,
-          TextPart: 'This email requires HTML support to view properly.',
-          DefaultTemplateData: JSON.stringify(defaultTemplateData)
+          TextPart: 'This email requires HTML support to view properly.'
         }
       }));
       
@@ -177,8 +181,7 @@ async function createOrUpdateSesTemplate(templateName: string, htmlContent: stri
             TemplateName: templateName,
             SubjectPart: subject,
             HtmlPart: htmlContent,
-            TextPart: 'This email requires HTML support to view properly.',
-            DefaultTemplateData: JSON.stringify(defaultTemplateData)
+            TextPart: 'This email requires HTML support to view properly.'
           }
         }));
         
@@ -195,10 +198,11 @@ async function createOrUpdateSesTemplate(templateName: string, htmlContent: stri
 }
 
 interface CreateCampaignRequest {
+  cognitoId: string;
   name: string;
   description?: string;
-  templateId?: string; // Made optional
-  templateVersion?: string; // Changed to string to match our versioning
+  layoutId?: string;
+  layoutVersion?: string;
   audienceSelection: {
     type: 'tag' | 'list' | 'all';
     values: string[];
@@ -212,77 +216,157 @@ interface CreateCampaignRequest {
   metadata?: {
     subject?: string;
     fromName?: string;
-    fromEmail?: string;
+    fromEmail?: string; // Optional - will be automatically set from ORGMETADATA
     previewText?: string;
   };
 }
 
 interface CreateCampaignResponse {
   success: boolean;
+  cognitoId?: string;
   campaignId?: string;
   campaign?: any;
   message?: string;
-  indexesCreated?: number;
-  template?: {
-    templateId?: string;
-    version?: string;
+  recordsCreated?: number;
+  layout?: {
+    layoutId?: string;
+    layoutVersion?: string;
     s3Path?: string;
     name?: string;
     description?: string;
     category?: string;
   };
+  renderedHtml?: string;
+  layoutRetrieved?: boolean;
+  sesTemplate?: {
+    templateName?: string;
+    created?: boolean;
+    updated?: boolean;
+    variables?: string[];
+    error?: string;
+  };
+}
+
+// Function to retrieve JSX code from S3 and render it to HTML
+async function retrieveAndRenderLayoutFromS3(layoutId: string, layoutVersion: string): Promise<{ html: string | null; retrieved: boolean }> {
+  try {
+    const s3Key = `${layoutId}/${layoutVersion}/${layoutId}.jsx`;
+    console.log(`Retrieving layout from S3: ${s3Key}`);
+    
+    const result = await s3Client.send(new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: s3Key
+    }));
+    
+    if (result.Body) {
+      const jsxCode = await result.Body.transformToString();
+      console.log(`Successfully retrieved JSX code (${jsxCode.length} characters)`);
+      
+      // Render JSX to HTML using the existing renderJsxToHtml function
+      const renderedResult = await renderJsxToHtml(jsxCode);
+      console.log(`Successfully rendered JSX to HTML (${renderedResult.html.length} characters)`);
+      
+      return {
+        html: renderedResult.html,
+        retrieved: true
+      };
+    }
+    
+    return { html: null, retrieved: false };
+  } catch (error) {
+    console.error(`Error retrieving or rendering layout from S3: ${layoutId}/${layoutVersion}:`, error);
+    return { html: null, retrieved: false };
+  }
+}
+
+// Function to retrieve organization metadata to get senderEmail
+async function retrieveOrganizationMetadata(cognitoId: string): Promise<string | null> {
+  try {
+    const orgQuery = await docClient.send(new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+      ExpressionAttributeValues: {
+        ':pk': `USER#${cognitoId}`,
+        ':sk': 'ORGMETADATA'
+      },
+      Limit: 1 // Just get the first organization record
+    }));
+
+    if (orgQuery.Items && orgQuery.Items.length > 0) {
+      const orgData = orgQuery.Items[0];
+      console.log(`Found organization metadata for ${cognitoId}:`, orgData.senderEmail);
+      return orgData.senderEmail || null;
+    }
+
+    console.warn(`No organization metadata found for ${cognitoId}`);
+    return null;
+  } catch (error) {
+    console.error('Error retrieving organization metadata:', error);
+    return null;
+  }
 }
 
 const handlerLogic = async (event: ApiGatewayEventLike): Promise<CreateCampaignResponse> => {
-  const userId = event.pathParameters?.userId || (event.body ? JSON.parse(event.body).userId : undefined);
-  if (!userId) {
-    throw new HttpError(400, 'userId is required');
+  const body = event.body ? JSON.parse(event.body) as CreateCampaignRequest : undefined;
+  
+  if (!body) {
+    throw new HttpError(400, 'Request body is required');
   }
 
-  const body = event.body ? JSON.parse(event.body) as CreateCampaignRequest : undefined;
-  if (!body || !body.name || !body.audienceSelection) {
-    throw new HttpError(400, 'name and audienceSelection are required');
+  if (!body.cognitoId || typeof body.cognitoId !== 'string') {
+    throw new HttpError(400, 'cognitoId is required and must be a string');
+  }
+
+  if (!body.name || typeof body.name !== 'string') {
+    throw new HttpError(400, 'name is required and must be a string');
+  }
+
+  if (!body.audienceSelection || !body.audienceSelection.type) {
+    throw new HttpError(400, 'audienceSelection is required');
   }
 
   try {
     const nowIso = new Date().toISOString();
     const campaignId = `cmp-${randomUUID().slice(0, 8)}`;
     
-    // Retrieve template information if templateId is provided
-    let templateInfo: any = null;
+    // Retrieve layout information if layoutId is provided
+    let layoutInfo: any = null;
+    let renderedHtml: string | null = null;
+    let layoutRetrieved = false;
+    let sesTemplateInfo: any = null;
     
-    if (body.templateId) {
+    if (body.layoutId) {
       // Always use "latest" version for templates
       try {
-        // Query DynamoDB for template metadata (always latest version)
-        const templateQuery = await docClient.send(new QueryCommand({
-          TableName: TABLE_NAMES.MAIN_TABLE,
+        // Query DynamoDB for layout metadata
+        const layoutQuery = await docClient.send(new QueryCommand({
+          TableName: TABLE_NAME,
           KeyConditionExpression: 'PK = :pk AND SK = :sk',
           ExpressionAttributeValues: {
-            ':pk': `LAYOUT#${body.templateId}`,
-            ':sk': 'VERSION#latest'
+            ':pk': `LAYOUT#${body.layoutId}`,
+            ':sk': `VERSION#${body.layoutVersion || 'latest'}`
           }
         }));
         
-        if (templateQuery.Items && templateQuery.Items.length > 0) {
-          const templateItem = templateQuery.Items[0];
-          templateInfo = {
-            templateId: templateItem.layoutId,
-            version: templateItem.version,
-            s3Path: templateItem.s3Path,
-            name: templateItem.name,
-            description: templateItem.description,
-            category: templateItem.category
+        if (layoutQuery.Items && layoutQuery.Items.length > 0) {
+          const layoutItem = layoutQuery.Items[0];
+          layoutInfo = {
+            layoutId: layoutItem.layoutId,
+            layoutVersion: layoutItem.version,
+            s3Path: layoutItem.s3Path,
+            name: layoutItem.name,
+            description: layoutItem.description,
+            category: layoutItem.category
           };
           
-          console.log(`Template found: ${body.templateId} (latest version)`);
+          console.log(`Layout found: ${body.layoutId} (version: ${body.layoutVersion || 'latest'})`);
           
           // Create SES template from the layout
           try {
             console.log('Creating SES template from layout...');
             
             // Get the JSX code from S3
-            const s3Key = `universal/${body.templateId}/latest/component.jsx`;
+            const s3Key = layoutItem.s3JsxPath;
             const s3Response = await s3Client.send(new GetObjectCommand({
               Bucket: BUCKET_NAME,
               Key: s3Key
@@ -294,22 +378,27 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<CreateCampaignR
             }
             
             // Render JSX to HTML
-            const { html: renderedHtml, variables } = await renderJsxToHtml(jsxCode);
+            const { html: renderedHtmlFromJsx, variables } = await renderJsxToHtml(jsxCode);
             console.log(`Rendered HTML with variables: ${variables.join(', ')}`);
             
-            // Create SES template with campaign ID as template name
+            // Store the rendered HTML for return
+            renderedHtml = renderedHtmlFromJsx;
+            layoutRetrieved = true;
+            
+            // Create SES template with cognitoId_campaignId format
+            const templateName = `${body.cognitoId}_${campaignId}`;
             const sesTemplateResult = await createOrUpdateSesTemplate(
-              campaignId, // Use campaign ID as template name
+              templateName, // Use cognitoId_campaignId format
               renderedHtml,
-              body.metadata?.subject || templateInfo.name || 'Email Template',
+              body.metadata?.subject || layoutInfo.name || 'Email Template',
               variables // Pass the detected variables for default template data
             );
             
-            console.log(`SES template created: ${campaignId} (${sesTemplateResult.created ? 'created' : 'updated'})`);
+            console.log(`SES template created: ${templateName} (${sesTemplateResult.created ? 'created' : 'updated'})`);
             
-            // Add SES template info to templateInfo
-            templateInfo.sesTemplate = {
-              templateName: campaignId,
+            // Store SES template info separately (not in layoutInfo)
+            sesTemplateInfo = {
+              templateName: templateName,
               created: sesTemplateResult.created,
               updated: sesTemplateResult.updated,
               variables: variables
@@ -321,12 +410,12 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<CreateCampaignR
             console.warn('Continuing campaign creation without SES template');
           }
         } else {
-          console.warn(`Template not found: ${body.templateId} (latest version)`);
+          console.warn(`Layout not found: ${body.layoutId} (version: ${body.layoutVersion || 'latest'})`);
         }
-      } catch (templateError) {
-        console.error('Error retrieving template:', templateError);
-        // Don't fail the campaign creation if template retrieval fails
-        console.warn('Continuing campaign creation without template info');
+      } catch (layoutError) {
+        console.error('Error retrieving layout:', layoutError);
+        // Don't fail the campaign creation if layout retrieval fails
+        console.warn('Continuing campaign creation without layout info');
       }
     }
 
@@ -351,131 +440,82 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<CreateCampaignR
     }
 
     const status = body.status ?? 'draft';
-    const item = {
-      userId,
-      campaignId,
+    
+    // Retrieve organization's senderEmail from ORGMETADATA
+    const orgSenderEmail = await retrieveOrganizationMetadata(body.cognitoId);
+    
+    // Prepare campaign metadata with automatic fromEmail from organization
+    const campaignMetadata = {
+      ...body.metadata,
+      fromEmail: orgSenderEmail || body.metadata?.fromEmail || 'noreply@goodbricks.org' // Fallback hierarchy
+    };
+    
+    console.log(`Using senderEmail from organization: ${orgSenderEmail || 'fallback'}`);
+    
+    const campaignData = {
+      userId: body.cognitoId,
+      campaignId: campaignId,
       name: body.name,
-      description: body.description,
-      templateId: body.templateId || '',
-      templateVersion: 'latest',
+      description: body.description || '',
+      layoutId: body.layoutId || '',
+      layoutVersion: body.layoutVersion || 'latest',
       audienceSelection: body.audienceSelection,
       recipients: recipients,
       status: status,
-      scheduledAt: body.scheduledAt,
+      scheduledAt: body.scheduledAt || null,
+      sentAt: null,
       createdAt: nowIso,
       lastModified: nowIso,
-      metadata: body.metadata ?? {}
+      metadata: campaignMetadata
     };
 
-    // Create main campaign record in the main table
-    const mainCampaignRecord = {
-      PK: `USER#${userId}`,
+    // Create records to be written to DynamoDB
+    const recordsToCreate = [];
+
+    // 1. Primary Record: USER#{cognitoId} + CAMPAIGN#{campaignId}
+    const primaryRecord = {
+      PK: `USER#${body.cognitoId}`,
       SK: `CAMPAIGN#${campaignId}`,
-      ...item
+      ...campaignData
     };
+    recordsToCreate.push(primaryRecord);
 
-    await docClient.send(new PutCommand({
-      TableName: TABLE_NAMES.MAIN_TABLE,
-      Item: mainCampaignRecord,
-      ConditionExpression: 'attribute_not_exists(#PK) AND attribute_not_exists(#SK)',
-      ExpressionAttributeNames: {
-        '#PK': 'PK',
-        '#SK': 'SK'
-      }
-    }));
+    // 2. Status Index Record: USER#{cognitoId} + STATUS#draft#CAMPAIGN#{campaignId}
+    const statusIndexRecord = {
+      PK: `USER#${body.cognitoId}`,
+      SK: `STATUS#${status}#CAMPAIGN#${campaignId}`,
+      ...campaignData
+    };
+    recordsToCreate.push(statusIndexRecord);
 
-    // Create index records in the main table for efficient querying
-    const indexRecords = [
-      // 1. Organization Campaigns Index - All campaigns for an org
-      {
-        PK: `ORG_CAMPAIGNS#${userId}`,
-        SK: `CAMPAIGN#${campaignId}`,
-        userId: userId,
-        campaignId: campaignId,
-        name: body.name,
-        description: body.description,
-        templateId: body.templateId || '',
-        templateVersion: 'latest',
-        audienceSelection: body.audienceSelection,
-        recipients: recipients,
-        status: status,
-        scheduledAt: body.scheduledAt,
-        createdAt: nowIso,
-        lastModified: nowIso,
-        metadata: body.metadata ?? {}
-      },
-      // 2. Organization Status Campaigns Index - Campaigns by org and status
-      {
-        PK: `ORG_STATUS_CAMPAIGNS#${userId}#${status}`,
-        SK: `CAMPAIGN#${campaignId}`,
-        userId: userId,
-        campaignId: campaignId,
-        name: body.name,
-        description: body.description,
-        templateId: body.templateId || '',
-        templateVersion: 'latest',
-        audienceSelection: body.audienceSelection,
-        recipients: recipients,
-        status: status,
-        scheduledAt: body.scheduledAt,
-        createdAt: nowIso,
-        lastModified: nowIso,
-        metadata: body.metadata ?? {}
-      }
-    ];
-
-    // Add group-specific index records if recipients are group-based
-    if (recipients.type === 'groups' && recipients.groupIds) {
-      recipients.groupIds.forEach(groupId => {
-        indexRecords.push({
-          PK: `GROUP_CAMPAIGNS#${userId}#${groupId}`,
+    // 3. Group Campaign Records (if targeting groups)
+    if (recipients.type === 'groups' && recipients.groupIds && recipients.groupIds.length > 0) {
+      for (const groupId of recipients.groupIds) {
+        // Group Campaign Record: USER#{cognitoId}#GROUP#{groupId} + CAMPAIGN#{campaignId}
+        const groupCampaignRecord = {
+          PK: `USER#${body.cognitoId}#GROUP#${groupId}`,
           SK: `CAMPAIGN#${campaignId}`,
-          userId: userId,
-          campaignId: campaignId,
-          groupId: groupId,
-          name: body.name,
-          description: body.description,
-          templateId: body.templateId,
-          templateVersion: body.templateVersion ?? 1,
-          audienceSelection: body.audienceSelection,
-          recipients: recipients,
-          status: status,
-          scheduledAt: body.scheduledAt,
-          createdAt: nowIso,
-          lastModified: nowIso,
-          metadata: body.metadata ?? {}
-        } as any); // Type assertion to handle the groupId property
-      });
+          ...campaignData,
+          groupId: groupId
+        };
+        recordsToCreate.push(groupCampaignRecord);
+
+        // Group Status Campaign Record: USER#{cognitoId}#GROUP#{groupId} + STATUS#draft#CAMPAIGN#{campaignId}
+        const groupStatusCampaignRecord = {
+          PK: `USER#${body.cognitoId}#GROUP#${groupId}`,
+          SK: `STATUS#${status}#CAMPAIGN#${campaignId}`,
+          ...campaignData,
+          groupId: groupId
+        };
+        recordsToCreate.push(groupStatusCampaignRecord);
+      }
     }
 
-    // Add audience member index records for all audience members
-    // This will be populated when the campaign is sent, but we can create the structure here
-    // For now, we'll create a placeholder that gets updated during send
-    if (recipients.type === 'all_audience') {
-      // Create a marker record that indicates this campaign targets all audience
-      indexRecords.push({
-        PK: `ALL_AUDIENCE_CAMPAIGNS#${userId}`,
-        SK: `CAMPAIGN#${campaignId}`,
-        userId: userId,
-        campaignId: campaignId,
-        name: body.name,
-        description: body.description,
-        templateId: body.templateId || '',
-        templateVersion: 'latest',
-        audienceSelection: body.audienceSelection,
-        recipients: recipients,
-        status: status,
-        scheduledAt: body.scheduledAt,
-        createdAt: nowIso,
-        lastModified: nowIso,
-        metadata: body.metadata ?? {}
-      } as any);
-    }
-
-    // Create all index records using batch write
-    const batchRequests = indexRecords.map(record => ({
+    // Create all records using batch write
+    const batchRequests = recordsToCreate.map(record => ({
       PutRequest: {
-        Item: record
+        Item: record,
+        ConditionExpression: 'attribute_not_exists(PK) AND attribute_not_exists(SK)'
       }
     }));
 
@@ -484,18 +524,22 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<CreateCampaignR
       const batch = batchRequests.slice(i, i + 25);
       await docClient.send(new BatchWriteCommand({
         RequestItems: {
-          [TABLE_NAMES.MAIN_TABLE]: batch
+          [TABLE_NAME]: batch
         }
       }));
     }
 
     return { 
-      success: true, 
+      success: true,
+      cognitoId: body.cognitoId,
       campaignId, 
-      campaign: mainCampaignRecord, 
-      message: 'Campaign created with all index records in main table',
-      indexesCreated: indexRecords.length + 1, // +1 for the main campaign record
-      template: templateInfo
+      campaign: primaryRecord, 
+      message: 'Campaign created successfully with all required records',
+      recordsCreated: recordsToCreate.length,
+      layout: layoutInfo,
+      renderedHtml: renderedHtml || undefined,
+      layoutRetrieved: layoutRetrieved,
+      sesTemplate: sesTemplateInfo
     };
   } catch (error) {
     console.error('Error creating campaign:', error);

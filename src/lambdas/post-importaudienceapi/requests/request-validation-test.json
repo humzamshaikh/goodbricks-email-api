@@ -1,0 +1,12 @@
+{
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"cognitoId\":\"cognito-user-test\",\"organization\":\"Test Org\",\"members\":[{\"email\":\"valid@example.com\",\"firstName\":\"Valid\",\"lastName\":\"User\"},{\"email\":\"invalid-email\",\"firstName\":\"Invalid\",\"lastName\":\"User\"},{\"email\":\"another@valid.com\",\"firstName\":\"Another\",\"lastName\":\"Valid\"}]}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/import-audience",
+  "resource": "/import-audience"
+}

@@ -1,0 +1,12 @@
+{
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"name\":\"welcome-series\",\"description\":\"Welcome email series for new subscribers\",\"category\":\"newsletters\",\"jsxCode\":\"import React from 'react';\\n\\ninterface WelcomeEmailProps {\\n  firstName: string;\\n  lastName: string;\\n}\\n\\nconst WelcomeEmail: React.FC<WelcomeEmailProps> = ({ firstName, lastName }) => {\\n  return (\\n    <div style={{ fontFamily: 'Arial, sans-serif', maxWidth: '600px', margin: '0 auto' }}>\\n      <h1 style={{ color: '#333', textAlign: 'center' }}>Welcome to Our Newsletter!</h1>\\n      <p>Dear {firstName} {lastName},</p>\\n      <p>Thank you for subscribing to our newsletter. We're excited to have you on board!</p>\\n      <p>You'll receive our latest updates, exclusive content, and special offers.</p>\\n      <p>Best regards,<br/>The Newsletter Team</p>\\n    </div>\\n  );\\n};\\n\\nexport default WelcomeEmail;\"}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/create-layout",
+  "resource": "/create-layout"
+}

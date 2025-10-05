@@ -1,0 +1,12 @@
+{
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"cognitoId\":\"cognito-user-cair\",\"name\":\"Monthly Newsletter\",\"description\":\"Our monthly community newsletter\",\"templateId\":\"newsletter-template\",\"audienceSelection\":{\"type\":\"all\",\"values\":[]},\"recipients\":{\"type\":\"all_audience\"},\"status\":\"draft\",\"metadata\":{\"subject\":\"Monthly Newsletter - October 2025\",\"fromName\":\"CAIR Communications\",\"fromEmail\":\"newsletter@cair.com\",\"previewText\":\"Stay updated with our latest news and events\"}}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/create-campaign",
+  "resource": "/create-campaign"
+}

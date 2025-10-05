@@ -12,7 +12,7 @@ const docClient = DynamoDBDocumentClient.from(dynamoClient);
 const TABLE_NAME = process.env.MAIN_TABLE_NAME || 'goodbricks-email-main';
 
 interface CreateOrgRequest {
-  userId: string; // Cognito user ID
+  cognitoId: string; // Cognito user ID
   orgName: string;
   activeSubscribers: number;
   description?: string;
@@ -24,6 +24,7 @@ interface CreateOrgRequest {
 
 interface CreateOrgResponse {
   success: boolean;
+  orgId?: string;
   orgMetadata?: any;
   message?: string;
 }
@@ -36,8 +37,8 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<CreateOrgRespon
   }
 
   // Validate required fields
-  if (!body.userId || typeof body.userId !== 'string') {
-    throw new HttpError(400, 'userId is required and must be a string');
+  if (!body.cognitoId || typeof body.cognitoId !== 'string') {
+    throw new HttpError(400, 'cognitoId is required and must be a string');
   }
 
   if (!body.orgName || typeof body.orgName !== 'string') {
@@ -59,11 +60,15 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<CreateOrgRespon
   try {
     const nowIso = new Date().toISOString();
     
+    // Generate unique orgId
+    const orgId = `org-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
     // Create the organization metadata item
     const orgItem = {
-      PK: `USER#${body.userId}`,
-      SK: 'ORGMETADATA',
-      userId: body.userId,
+      PK: `USER#${body.cognitoId}`,
+      SK: `ORGMETADATA#${orgId}`,
+      userId: body.cognitoId,
+      orgId: orgId,
       orgName: body.orgName,
       activeSubscribers: body.activeSubscribers,
       description: body.description || '',
@@ -84,6 +89,7 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<CreateOrgRespon
 
     return { 
       success: true, 
+      orgId: orgId,
       orgMetadata: orgItem,
       message: 'Organization metadata created successfully' 
     };
@@ -93,7 +99,7 @@ const handlerLogic = async (event: ApiGatewayEventLike): Promise<CreateOrgRespon
     
     // Handle conditional check failure (organization metadata already exists)
     if (error instanceof Error && error.message.includes('ConditionalCheckFailedException')) {
-      throw new HttpError(409, `Organization metadata already exists for user: ${body.userId}`);
+      throw new HttpError(409, `Organization metadata already exists for user: ${body.cognitoId}`);
     }
 
     throw new HttpError(500, `Failed to create organization metadata: ${error instanceof Error ? error.message : 'Unknown error'}`);

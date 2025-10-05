@@ -1,0 +1,12 @@
+{
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"cognitoId\":\"cognito-user-test\",\"orgName\":\"Test Organization\",\"activeSubscribers\":100,\"description\":\"A test organization for development\",\"website\":\"https://test.org\",\"senderEmail\":\"test@test.org\",\"address\":\"123 Test St, Test City, TC 12345\",\"phone\":\"(555) 123-4567\"}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/create-org",
+  "resource": "/create-org"
+}

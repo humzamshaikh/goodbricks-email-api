@@ -1,0 +1,12 @@
+{
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"cognitoId\":\"cognito-user-cair\",\"organization\":\"CAIR\",\"members\":[{\"email\":\"omaralt148@gmail.com\",\"firstName\":\"Omar\",\"lastName\":\"Shaikh\"},{\"email\":\"humza.shaikh2006@gmail.com\",\"firstName\":\"Humza\",\"lastName\":\"Shaikh\"},{\"email\":\"eshaikh.omar@gmail.com\",\"firstName\":\"Enayat\",\"lastName\":\"Shaikh\"}]}",
+  "isBase64Encoded": false,
+  "httpMethod": "POST",
+  "path": "/import-audience",
+  "resource": "/import-audience"
+}
